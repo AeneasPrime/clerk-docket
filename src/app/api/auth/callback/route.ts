@@ -13,7 +13,9 @@ export async function GET(request: NextRequest) {
 
   try {
     await handleAuthCallback(code);
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "localhost:3000";
+    const proto = request.headers.get("x-forwarded-proto") || "https";
+    return NextResponse.redirect(new URL("/dashboard", `${proto}://${host}`));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
