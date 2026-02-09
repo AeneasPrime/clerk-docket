@@ -66,6 +66,24 @@ ITEM TYPES:
 - informational: FYI or status update, no council action needed
 - other: Relevant but doesn't fit the categories above
 
+DEPARTMENTS (use these exact names for the "department" field):
+- Administration
+- Finance/CFO
+- Law
+- Engineering
+- Public Works
+- Police
+- Fire
+- Health
+- Recreation
+- Planning/Zoning
+- Tax Collection
+- Tax Assessment
+- Water/Sewer Utility
+- Code Enforcement
+- Human Resources
+- Municipal Court
+
 CLASSIFICATION GUIDANCE:
 - If the email is clearly personal, spam, a newsletter, or administrative (meeting logistics, scheduling) with no substantive agenda content, mark relevant: false
 - If you're unsure, err on the side of relevant: true with confidence: "low"

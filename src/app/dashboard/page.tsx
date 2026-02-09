@@ -97,6 +97,25 @@ const TYPE_META: Record<string, { label: string; short: string }> = {
   other: { label: "Other", short: "OTH" },
 };
 
+const DEPARTMENTS: { name: string; icon: string }[] = [
+  { name: "Administration", icon: "◆" },
+  { name: "Finance/CFO", icon: "$" },
+  { name: "Law", icon: "§" },
+  { name: "Engineering", icon: "△" },
+  { name: "Public Works", icon: "⚙" },
+  { name: "Police", icon: "★" },
+  { name: "Fire", icon: "⦿" },
+  { name: "Health", icon: "+" },
+  { name: "Recreation", icon: "◎" },
+  { name: "Planning/Zoning", icon: "▦" },
+  { name: "Tax Collection", icon: "¢" },
+  { name: "Tax Assessment", icon: "▤" },
+  { name: "Water/Sewer Utility", icon: "≋" },
+  { name: "Code Enforcement", icon: "⊘" },
+  { name: "Human Resources", icon: "⊕" },
+  { name: "Municipal Court", icon: "⚖" },
+];
+
 const AGENDA_SECTIONS = [
   { label: "Resolutions", types: new Set([
     "resolution_bid_award", "resolution_professional_services", "resolution_state_contract",
@@ -173,6 +192,340 @@ function senderName(from: string): string {
   return match ? match[1].trim() : from;
 }
 
+// --- Command Center ---
+
+function CommandCenter({
+  entries,
+  stats,
+  onViewChange,
+  onSelect,
+}: {
+  entries: DocketEntry[];
+  stats: DocketStats | null;
+  onViewChange: (v: string) => void;
+  onSelect: (id: number) => void;
+}) {
+  const ws = nextWorkSession();
+  const accepted = useMemo(() => entries.filter((e) => e.status === "accepted" || e.status === "on_agenda"), [entries]);
+  const newItems = useMemo(() => entries.filter((e) => e.status === "new"), [entries]);
+  const flagged = useMemo(() => entries.filter((e) => e.status === "needs_info"), [entries]);
+
+  // Meeting readiness: agenda items by section
+  const agendaSections = useMemo(() =>
+    AGENDA_SECTIONS.map((s) => ({
+      ...s,
+      items: accepted.filter((e) => s.types.has(e.item_type ?? "")),
+    })),
+    [accepted]
+  );
+
+  // Completeness issues on agenda items
+  const agendaIssues = useMemo(() => {
+    let cfo = 0, attorney = 0, blockLot = 0, citation = 0;
+    for (const e of accepted) {
+      const c = parseJson<CompletenessCheck>(e.completeness, {
+        needs_cfo_certification: false, needs_attorney_review: false,
+        missing_block_lot: false, missing_statutory_citation: false, notes: [],
+      });
+      if (c.needs_cfo_certification) cfo++;
+      if (c.needs_attorney_review) attorney++;
+      if (c.missing_block_lot) blockLot++;
+      if (c.missing_statutory_citation) citation++;
+    }
+    return { cfo, attorney, blockLot, citation, total: cfo + attorney + blockLot + citation };
+  }, [accepted]);
+
+  // Total dollar value on agenda
+  const agendaTotal = useMemo(() => {
+    let sum = 0;
+    for (const e of accepted) {
+      const f = parseJson<ExtractedFields>(e.extracted_fields, {});
+      const amt = primaryAmount(f);
+      if (amt) {
+        const n = parseFloat(amt.replace(/[$,]/g, ""));
+        if (!isNaN(n)) sum += n;
+      }
+    }
+    return sum;
+  }, [accepted]);
+
+  // Department breakdown with status counts
+  const deptBreakdown = useMemo(() => {
+    const map: Record<string, { total: number; new_: number; accepted: number; flagged: number }> = {};
+    for (const e of entries) {
+      const dept = e.department || "Unassigned";
+      if (!map[dept]) map[dept] = { total: 0, new_: 0, accepted: 0, flagged: 0 };
+      map[dept].total++;
+      if (e.status === "new") map[dept].new_++;
+      if (e.status === "accepted" || e.status === "on_agenda") map[dept].accepted++;
+      if (e.status === "needs_info") map[dept].flagged++;
+    }
+    return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
+  }, [entries]);
+
+  // Recent items (last 5)
+  const recent = useMemo(() =>
+    [...entries].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5),
+    [entries]
+  );
+
+  // Action items: agenda items with completeness gaps
+  const incompleteAgenda = useMemo(() =>
+    accepted.filter((e) => {
+      const c = parseJson<CompletenessCheck>(e.completeness, {
+        needs_cfo_certification: false, needs_attorney_review: false,
+        missing_block_lot: false, missing_statutory_citation: false, notes: [],
+      });
+      return c.needs_cfo_certification || c.needs_attorney_review || c.missing_block_lot || c.missing_statutory_citation;
+    }),
+    [accepted]
+  );
+
+  return (
+    <div className="flex-1 overflow-y-auto bg-[#f5f3ef]">
+      <div className="mx-auto max-w-5xl px-6 py-6">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-lg font-semibold text-stone-900">Command Center</h1>
+          <p className="mt-0.5 text-xs text-stone-400">
+            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+          </p>
+        </div>
+
+        {/* Metric Cards */}
+        <div className="mb-6 grid grid-cols-4 gap-3">
+          <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Next Meeting</p>
+            <p className="mt-1.5 text-xl font-semibold tabular-nums text-stone-900">
+              {ws.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            </p>
+            <p className={`mt-0.5 text-xs font-medium ${ws.days <= 2 ? "text-red-500" : ws.days <= 5 ? "text-amber-500" : "text-stone-400"}`}>
+              {ws.days === 0 ? "Today" : ws.days === 1 ? "Tomorrow" : `${ws.days} days away`}
+            </p>
+          </div>
+
+          <button onClick={() => onViewChange("agenda")} className="rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-stone-200/60 transition-colors hover:bg-stone-50">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">On Agenda</p>
+            <p className="mt-1.5 text-xl font-semibold tabular-nums text-emerald-600">{accepted.length}</p>
+            {agendaTotal > 0 && (
+              <p className="mt-0.5 font-mono text-xs text-stone-400">
+                ${agendaTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            )}
+          </button>
+
+          <button onClick={() => onViewChange("review")} className="rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-stone-200/60 transition-colors hover:bg-stone-50">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Needs Review</p>
+            <p className={`mt-1.5 text-xl font-semibold tabular-nums ${newItems.length > 0 ? "text-blue-600" : "text-stone-300"}`}>
+              {newItems.length}
+            </p>
+            <p className="mt-0.5 text-xs text-stone-400">
+              {newItems.length === 0 ? "All caught up" : "awaiting action"}
+            </p>
+          </button>
+
+          <button onClick={() => onViewChange("needs_info")} className="rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-stone-200/60 transition-colors hover:bg-stone-50">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Flagged</p>
+            <p className={`mt-1.5 text-xl font-semibold tabular-nums ${flagged.length > 0 ? "text-red-500" : "text-stone-300"}`}>
+              {flagged.length}
+            </p>
+            <p className="mt-0.5 text-xs text-stone-400">
+              {flagged.length === 0 ? "No flags" : "needs information"}
+            </p>
+          </button>
+        </div>
+
+        {/* Two-column middle */}
+        <div className="mb-6 grid grid-cols-2 gap-3">
+          {/* Meeting Readiness */}
+          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className="text-[11px] font-semibold uppercase tracking-widest text-stone-400">Meeting Readiness</h2>
+              <button onClick={() => onViewChange("live_agenda")} className="text-[11px] text-stone-400 transition-colors hover:text-stone-600">
+                View Agenda →
+              </button>
+            </div>
+
+            {/* Section breakdown */}
+            <div className="mb-4 space-y-2">
+              {agendaSections.map((s) => (
+                <div key={s.label} className="flex items-center justify-between">
+                  <span className="text-[12px] text-stone-600">{s.label}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-stone-100">
+                      <div
+                        className="h-full rounded-full bg-emerald-400 transition-all"
+                        style={{ width: accepted.length > 0 ? `${(s.items.length / Math.max(accepted.length, 1)) * 100}%` : "0%" }}
+                      />
+                    </div>
+                    <span className="w-5 text-right text-[11px] tabular-nums text-stone-400">{s.items.length}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Completeness alerts */}
+            {agendaIssues.total > 0 ? (
+              <div className="rounded-lg bg-amber-50/80 p-3">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-amber-600">
+                  {agendaIssues.total} Completeness {agendaIssues.total === 1 ? "Issue" : "Issues"}
+                </p>
+                <div className="space-y-1">
+                  {agendaIssues.cfo > 0 && (
+                    <p className="text-[11px] text-amber-700">CFO Certification needed ({agendaIssues.cfo})</p>
+                  )}
+                  {agendaIssues.attorney > 0 && (
+                    <p className="text-[11px] text-amber-700">Attorney Review needed ({agendaIssues.attorney})</p>
+                  )}
+                  {agendaIssues.blockLot > 0 && (
+                    <p className="text-[11px] text-amber-700">Missing Block/Lot ({agendaIssues.blockLot})</p>
+                  )}
+                  {agendaIssues.citation > 0 && (
+                    <p className="text-[11px] text-amber-700">Missing Citation ({agendaIssues.citation})</p>
+                  )}
+                </div>
+              </div>
+            ) : accepted.length > 0 ? (
+              <div className="rounded-lg bg-emerald-50/80 p-3">
+                <p className="text-[11px] font-medium text-emerald-700">All agenda items complete</p>
+              </div>
+            ) : (
+              <div className="rounded-lg bg-stone-100/60 p-3">
+                <p className="text-[11px] text-stone-400">No items on agenda yet</p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Items */}
+          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
+            <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-stone-400">Action Items</h2>
+
+            {newItems.length === 0 && flagged.length === 0 && incompleteAgenda.length === 0 ? (
+              <div className="flex flex-col items-center py-8">
+                <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
+                  <span className="text-sm text-emerald-500">✓</span>
+                </div>
+                <p className="text-[12px] font-medium text-stone-600">Nothing needs attention</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5 overflow-y-auto" style={{ maxHeight: "220px" }}>
+                {newItems.slice(0, 3).map((e) => {
+                  const meta = e.item_type ? TYPE_META[e.item_type] : null;
+                  return (
+                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-stone-50">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-50 text-[9px] font-bold text-blue-600">
+                        {meta?.short ?? "—"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[12px] text-stone-700">{e.summary || e.email_subject}</p>
+                        <p className="text-[10px] text-stone-400">{e.department} · New</p>
+                      </div>
+                    </button>
+                  );
+                })}
+                {newItems.length > 3 && (
+                  <button onClick={() => onViewChange("review")} className="w-full rounded-lg px-2.5 py-1.5 text-left text-[11px] text-blue-600 transition-colors hover:bg-blue-50">
+                    +{newItems.length - 3} more to review →
+                  </button>
+                )}
+                {flagged.slice(0, 2).map((e) => {
+                  const meta = e.item_type ? TYPE_META[e.item_type] : null;
+                  return (
+                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-stone-50">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-red-50 text-[9px] font-bold text-red-500">
+                        {meta?.short ?? "—"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[12px] text-stone-700">{e.summary || e.email_subject}</p>
+                        <p className="text-[10px] text-red-500">{e.department} · Needs Info</p>
+                      </div>
+                    </button>
+                  );
+                })}
+                {incompleteAgenda.slice(0, 2).map((e) => {
+                  const meta = e.item_type ? TYPE_META[e.item_type] : null;
+                  const c = parseJson<CompletenessCheck>(e.completeness, {
+                    needs_cfo_certification: false, needs_attorney_review: false,
+                    missing_block_lot: false, missing_statutory_citation: false, notes: [],
+                  });
+                  const issues = completenessIssues(c);
+                  return (
+                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-stone-50">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-amber-50 text-[9px] font-bold text-amber-600">
+                        {meta?.short ?? "—"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[12px] text-stone-700">{e.summary || e.email_subject}</p>
+                        <p className="text-[10px] text-amber-600">On Agenda · {issues.join(", ")}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom row */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Department Breakdown */}
+          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
+            <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-stone-400">By Department</h2>
+            {deptBreakdown.length === 0 ? (
+              <p className="py-4 text-center text-[11px] text-stone-400">No items yet</p>
+            ) : (
+              <div className="space-y-2">
+                {deptBreakdown.slice(0, 8).map(([dept, counts]) => (
+                  <div key={dept} className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-[12px] text-stone-600">{dept}</span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {counts.new_ > 0 && (
+                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] tabular-nums font-medium text-blue-600">{counts.new_}</span>
+                      )}
+                      {counts.accepted > 0 && (
+                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] tabular-nums font-medium text-emerald-600">{counts.accepted}</span>
+                      )}
+                      {counts.flagged > 0 && (
+                        <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] tabular-nums font-medium text-red-500">{counts.flagged}</span>
+                      )}
+                      <span className="w-5 text-right text-[11px] tabular-nums text-stone-300">{counts.total}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recent Activity */}
+          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
+            <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-stone-400">Recent Items</h2>
+            {recent.length === 0 ? (
+              <p className="py-4 text-center text-[11px] text-stone-400">No items yet</p>
+            ) : (
+              <div className="space-y-1.5">
+                {recent.map((e) => {
+                  const meta = e.item_type ? TYPE_META[e.item_type] : null;
+                  return (
+                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-stone-50">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-stone-100 text-[9px] font-bold text-stone-400">
+                        {meta?.short ?? "—"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[12px] text-stone-700">{e.summary || e.email_subject}</p>
+                        <p className="text-[10px] text-stone-400">{e.department} · {shortDate(e.created_at)}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Sidebar ---
 
 function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
@@ -182,7 +535,9 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
   deptFilter: string | null;
   onDeptFilter: (dept: string | null) => void;
 }) {
+  const [deptsOpen, setDeptsOpen] = useState(true);
   const navItems = [
+    { id: "command", label: "Command Center", count: 0 },
     { id: "review", label: "Review", count: stats?.new_count ?? 0 },
     { id: "agenda", label: "Agenda", count: stats?.accepted ?? 0 },
     { id: "live_agenda", label: "Live Agenda", count: stats?.accepted ?? 0 },
@@ -198,7 +553,7 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
       </div>
 
       {/* Nav */}
-      <nav className="mt-2 flex-1 px-3">
+      <nav className="mt-2 flex-1 overflow-y-auto px-3">
         <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-widest text-stone-400">Workflow</p>
         {navItems.map((item) => (
           <button
@@ -237,25 +592,46 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
           </button>
         )}
 
-        {stats && stats.by_department.length > 0 && (
-          <>
-            <p className="mb-2 mt-6 px-2 text-[10px] font-medium uppercase tracking-widest text-stone-400">Departments</p>
-            {stats.by_department.slice(0, 6).map((d) => (
+        <button
+          onClick={() => setDeptsOpen((v) => !v)}
+          className="mb-2 mt-6 flex w-full items-center justify-between px-2 text-[10px] font-medium uppercase tracking-widest text-stone-400 transition-colors hover:text-stone-600"
+        >
+          Departments
+          <svg
+            width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+            className={`transition-transform ${deptsOpen ? "" : "-rotate-90"}`}
+          >
+            <path d="M3 4.5L6 7.5L9 4.5" />
+          </svg>
+        </button>
+        {deptsOpen && (() => {
+          const countMap: Record<string, number> = {};
+          if (stats) {
+            for (const d of stats.by_department) countMap[d.department] = d.count;
+          }
+          return DEPARTMENTS.map((dept) => {
+            const count = countMap[dept.name] ?? 0;
+            return (
               <button
-                key={d.department}
-                onClick={() => onDeptFilter(deptFilter === d.department ? null : d.department)}
+                key={dept.name}
+                onClick={() => onDeptFilter(deptFilter === dept.name ? null : dept.name)}
                 className={`mb-0.5 flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-[12px] transition-colors ${
-                  deptFilter === d.department
-                    ? "bg-stone-200/60 font-medium text-stone-700"
-                    : "text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+                  deptFilter === dept.name
+                    ? "bg-stone-200/60 font-semibold text-stone-900"
+                    : count > 0
+                      ? "text-stone-600 hover:bg-stone-100 hover:text-stone-800"
+                      : "text-stone-400 hover:bg-stone-100 hover:text-stone-600"
                 }`}
               >
-                <span className="truncate">{d.department}</span>
-                <span className={`tabular-nums ${deptFilter === d.department ? "text-stone-500" : "text-stone-300"}`}>{d.count}</span>
+                <span className="flex items-center gap-1.5 truncate">
+                  <span className="w-3.5 text-center text-[10px] opacity-60">{dept.icon}</span>
+                  {dept.name}
+                </span>
+                <span className={`tabular-nums text-[11px] ${count > 0 ? (deptFilter === dept.name ? "text-stone-600" : "text-stone-400") : "text-stone-300"}`}>{count}</span>
               </button>
-            ))}
-          </>
-        )}
+            );
+          });
+        })()}
       </nav>
 
       <div className="border-t border-stone-200/60 px-4 py-3">
@@ -1402,7 +1778,7 @@ export default function DashboardPage() {
   const [scanning, setScanning] = useState(false);
   const [scanMsg, setScanMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState("review");
+  const [view, setView] = useState("command");
   const [deptFilter, setDeptFilter] = useState<string | null>(null);
 
   const fetch_ = useCallback(async () => {
@@ -1488,6 +1864,8 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
+        ) : view === "command" ? (
+          <CommandCenter entries={entries} stats={stats} onViewChange={setView} onSelect={(id) => setSelectedId(id)} />
         ) : view === "live_agenda" ? (
           <LiveAgenda entries={entries} onAction={doAction} />
         ) : (
