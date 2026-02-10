@@ -5,7 +5,7 @@ import { existsSync, unlinkSync, statSync, createReadStream } from "fs";
 import path from "path";
 import os from "os";
 import type { DocketEntry } from "@/types";
-import { getMeeting, getAgendaItemsForMeeting, updateMeeting } from "./db";
+import { getMeeting, getAgendaItemsForMeeting, updateMeeting, getMeetingsNeedingMinutes } from "./db";
 
 let _anthropic: Anthropic | null = null;
 function getClient(): Anthropic {
@@ -589,4 +589,15 @@ export function maybeAutoGenerateMinutes(meetingId: number): void {
       generatingSet.delete(meetingId);
     }
   })();
+}
+
+/**
+ * Scan all past meetings and trigger auto-generation for any that are ready.
+ * Called on meetings page load to catch seeded data or manual DB changes.
+ */
+export function checkPendingMinutesGeneration(): void {
+  const meetings = getMeetingsNeedingMinutes();
+  for (const meeting of meetings) {
+    maybeAutoGenerateMinutes(meeting.id);
+  }
 }

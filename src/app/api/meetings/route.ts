@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureMeetingsGenerated, getMeetingCycles } from "@/lib/db";
 import { syncVideosFromEdisonTV } from "@/lib/video-sync";
+import { checkPendingMinutesGeneration } from "@/lib/minutes-generator";
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,6 +9,9 @@ export async function GET(request: NextRequest) {
 
     // Auto-sync videos from EdisonTV
     await syncVideosFromEdisonTV();
+
+    // Check for any past meetings that need minutes generated
+    checkPendingMinutesGeneration();
 
     const url = request.nextUrl;
     const filter = (url.searchParams.get("filter") ?? "all") as "upcoming" | "past" | "all";

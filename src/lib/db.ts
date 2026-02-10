@@ -435,6 +435,22 @@ export function getAgendaItemsForMeeting(meetingDate: string): DocketEntry[] {
   ).all(meetingDate) as DocketEntry[];
 }
 
+/** Find past meetings that have video_url but no minutes and have agenda items assigned */
+export function getMeetingsNeedingMinutes(): Meeting[] {
+  const today = new Date().toISOString().split("T")[0];
+  return db.prepare(`
+    SELECT m.* FROM meetings m
+    WHERE m.video_url IS NOT NULL
+      AND (m.minutes IS NULL OR m.minutes = '')
+      AND m.meeting_date <= ?
+      AND EXISTS (
+        SELECT 1 FROM docket d
+        WHERE d.target_meeting_date = m.meeting_date
+          AND d.status IN ('accepted', 'on_agenda')
+      )
+  `).all(today) as Meeting[];
+}
+
 // --- Seed demo data ---
 
 function seedDemoData() {
