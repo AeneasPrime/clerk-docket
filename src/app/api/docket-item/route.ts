@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDocketEntry, updateDocketEntry } from "@/lib/db";
+import { getDocketEntry, updateDocketEntry, getMeetingsByDate } from "@/lib/db";
+import { maybeAutoGenerateMinutes } from "@/lib/minutes-generator";
 
 export async function GET(request: NextRequest) {
   const idParam = request.nextUrl.searchParams.get("id");
@@ -41,6 +42,14 @@ export async function PATCH(request: NextRequest) {
     item_type: body.item_type,
     department: body.department,
   });
+
+  // If a docket item was assigned to a meeting, check if minutes can be auto-generated
+  if (body.target_meeting_date) {
+    const meetings = getMeetingsByDate(body.target_meeting_date);
+    for (const m of meetings) {
+      maybeAutoGenerateMinutes(m.id);
+    }
+  }
 
   const updated = getDocketEntry(id);
   return NextResponse.json(updated);

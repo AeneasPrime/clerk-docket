@@ -282,162 +282,159 @@ function CommandCenter({
   );
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#f5f3ef]">
-      <div className="mx-auto max-w-5xl px-6 py-6">
+    <div className="flex-1 overflow-y-auto" style={{ background: "#F8F8F9" }}>
+      <div className="mx-auto max-w-[1080px] px-8 py-8">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-lg font-semibold text-stone-900">Command Center</h1>
-          <p className="mt-0.5 text-xs text-stone-400">
-            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-          </p>
+        <div className="mb-8 flex items-end justify-between">
+          <div>
+            <h1 className="text-[15px] font-semibold" style={{ color: "#1D2024" }}>Command Center</h1>
+            <p className="mt-1 text-[12px]" style={{ color: "#9CA0AB" }}>
+              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+            </p>
+          </div>
         </div>
 
         {/* Metric Cards */}
-        <div className="mb-6 grid grid-cols-4 gap-3">
-          <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Next Meeting</p>
-            <p className="mt-1.5 text-xl font-semibold tabular-nums text-stone-900">
+        <div className="mb-6 grid grid-cols-4 gap-4">
+          <div className="rounded-lg bg-white px-5 py-4" style={{ border: "1px solid #E5E5E8" }}>
+            <p className="text-[11px] font-medium" style={{ color: "#9CA0AB" }}>Next Meeting</p>
+            <p className="mt-2 text-[22px] font-semibold tabular-nums" style={{ color: "#1D2024" }}>
               {ws.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </p>
-            <p className={`mt-0.5 text-xs font-medium ${ws.days <= 2 ? "text-red-500" : ws.days <= 5 ? "text-amber-500" : "text-stone-400"}`}>
+            <p className="mt-1 text-[12px] font-medium" style={{ color: ws.days <= 2 ? "#F2555A" : ws.days <= 5 ? "#E59500" : "#9CA0AB" }}>
               {ws.days === 0 ? "Today" : ws.days === 1 ? "Tomorrow" : `${ws.days} days away`}
             </p>
           </div>
 
-          <button onClick={() => onViewChange("agenda")} className="rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-stone-200/60 transition-colors hover:bg-stone-50">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">On Agenda</p>
-            <p className="mt-1.5 text-xl font-semibold tabular-nums text-emerald-600">{accepted.length}</p>
-            {agendaTotal > 0 && (
-              <p className="mt-0.5 font-mono text-xs text-stone-400">
+          <button onClick={() => onViewChange("agenda")} className="rounded-lg bg-white px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]" style={{ border: "1px solid #E5E5E8" }}>
+            <p className="text-[11px] font-medium" style={{ color: "#9CA0AB" }}>On Agenda</p>
+            <p className="mt-2 text-[22px] font-semibold tabular-nums" style={{ color: "#26B5CE" }}>{accepted.length}</p>
+            {agendaTotal > 0 ? (
+              <p className="mt-1 font-mono text-[12px]" style={{ color: "#9CA0AB" }}>
                 ${agendaTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
+            ) : (
+              <p className="mt-1 text-[12px]" style={{ color: "#9CA0AB" }}>items accepted</p>
             )}
           </button>
 
-          <button onClick={() => onViewChange("review")} className="rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-stone-200/60 transition-colors hover:bg-stone-50">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Needs Review</p>
-            <p className={`mt-1.5 text-xl font-semibold tabular-nums ${newItems.length > 0 ? "text-blue-600" : "text-stone-300"}`}>
+          <button onClick={() => onViewChange("review")} className="rounded-lg bg-white px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]" style={{ border: "1px solid #E5E5E8" }}>
+            <p className="text-[11px] font-medium" style={{ color: "#9CA0AB" }}>Needs Review</p>
+            <p className="mt-2 text-[22px] font-semibold tabular-nums" style={{ color: newItems.length > 0 ? "#5E6AD2" : "#D2D3D6" }}>
               {newItems.length}
             </p>
-            <p className="mt-0.5 text-xs text-stone-400">
+            <p className="mt-1 text-[12px]" style={{ color: "#9CA0AB" }}>
               {newItems.length === 0 ? "All caught up" : "awaiting action"}
             </p>
           </button>
 
-          <button onClick={() => onViewChange("needs_info")} className="rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-stone-200/60 transition-colors hover:bg-stone-50">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Flagged</p>
-            <p className={`mt-1.5 text-xl font-semibold tabular-nums ${flagged.length > 0 ? "text-red-500" : "text-stone-300"}`}>
+          <button onClick={() => onViewChange("needs_info")} className="rounded-lg bg-white px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]" style={{ border: "1px solid #E5E5E8" }}>
+            <p className="text-[11px] font-medium" style={{ color: "#9CA0AB" }}>Flagged</p>
+            <p className="mt-2 text-[22px] font-semibold tabular-nums" style={{ color: flagged.length > 0 ? "#F2555A" : "#D2D3D6" }}>
               {flagged.length}
             </p>
-            <p className="mt-0.5 text-xs text-stone-400">
+            <p className="mt-1 text-[12px]" style={{ color: "#9CA0AB" }}>
               {flagged.length === 0 ? "No flags" : "needs information"}
             </p>
           </button>
         </div>
 
         {/* Two-column middle */}
-        <div className="mb-6 grid grid-cols-2 gap-3">
+        <div className="mb-6 grid grid-cols-2 gap-4">
           {/* Meeting Readiness */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
-            <div className="mb-4 flex items-baseline justify-between">
-              <h2 className="text-[11px] font-semibold uppercase tracking-widest text-stone-400">Meeting Readiness</h2>
-              <button onClick={() => onViewChange("live_agenda")} className="text-[11px] text-stone-400 transition-colors hover:text-stone-600">
+          <div className="rounded-lg bg-white px-5 py-5" style={{ border: "1px solid #E5E5E8" }}>
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Meeting Readiness</h2>
+              <button onClick={() => onViewChange("live_agenda")} className="text-[11px] font-medium transition-colors hover:opacity-80" style={{ color: "#5E6AD2" }}>
                 View Agenda →
               </button>
             </div>
 
-            {/* Section breakdown */}
-            <div className="mb-4 space-y-2">
+            <div className="mb-5 space-y-3">
               {agendaSections.map((s) => (
                 <div key={s.label} className="flex items-center justify-between">
-                  <span className="text-[12px] text-stone-600">{s.label}</span>
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-stone-100">
+                  <span className="text-[12px]" style={{ color: "#6B6F76" }}>{s.label}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="h-[5px] w-24 overflow-hidden rounded-full" style={{ background: "#F0F0F2" }}>
                       <div
-                        className="h-full rounded-full bg-emerald-400 transition-all"
-                        style={{ width: accepted.length > 0 ? `${(s.items.length / Math.max(accepted.length, 1)) * 100}%` : "0%" }}
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: accepted.length > 0 ? `${(s.items.length / Math.max(accepted.length, 1)) * 100}%` : "0%",
+                          background: "#26B5CE",
+                        }}
                       />
                     </div>
-                    <span className="w-5 text-right text-[11px] tabular-nums text-stone-400">{s.items.length}</span>
+                    <span className="w-5 text-right text-[11px] tabular-nums" style={{ color: "#9CA0AB" }}>{s.items.length}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Completeness alerts */}
             {agendaIssues.total > 0 ? (
-              <div className="rounded-lg bg-amber-50/80 p-3">
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-amber-600">
+              <div className="rounded-md px-4 py-3" style={{ background: "#FFF8F0", border: "1px solid #F5E6D0" }}>
+                <p className="mb-2 text-[11px] font-semibold" style={{ color: "#B45309" }}>
                   {agendaIssues.total} Completeness {agendaIssues.total === 1 ? "Issue" : "Issues"}
                 </p>
                 <div className="space-y-1">
-                  {agendaIssues.cfo > 0 && (
-                    <p className="text-[11px] text-amber-700">CFO Certification needed ({agendaIssues.cfo})</p>
-                  )}
-                  {agendaIssues.attorney > 0 && (
-                    <p className="text-[11px] text-amber-700">Attorney Review needed ({agendaIssues.attorney})</p>
-                  )}
-                  {agendaIssues.blockLot > 0 && (
-                    <p className="text-[11px] text-amber-700">Missing Block/Lot ({agendaIssues.blockLot})</p>
-                  )}
-                  {agendaIssues.citation > 0 && (
-                    <p className="text-[11px] text-amber-700">Missing Citation ({agendaIssues.citation})</p>
-                  )}
+                  {agendaIssues.cfo > 0 && <p className="text-[11px]" style={{ color: "#92400E" }}>CFO Certification needed ({agendaIssues.cfo})</p>}
+                  {agendaIssues.attorney > 0 && <p className="text-[11px]" style={{ color: "#92400E" }}>Attorney Review needed ({agendaIssues.attorney})</p>}
+                  {agendaIssues.blockLot > 0 && <p className="text-[11px]" style={{ color: "#92400E" }}>Missing Block/Lot ({agendaIssues.blockLot})</p>}
+                  {agendaIssues.citation > 0 && <p className="text-[11px]" style={{ color: "#92400E" }}>Missing Citation ({agendaIssues.citation})</p>}
                 </div>
               </div>
             ) : accepted.length > 0 ? (
-              <div className="rounded-lg bg-emerald-50/80 p-3">
-                <p className="text-[11px] font-medium text-emerald-700">All agenda items complete</p>
+              <div className="rounded-md px-4 py-3" style={{ background: "#F0FDF4", border: "1px solid #D1FAE5" }}>
+                <p className="text-[11px] font-medium" style={{ color: "#15803D" }}>All agenda items complete</p>
               </div>
             ) : (
-              <div className="rounded-lg bg-stone-100/60 p-3">
-                <p className="text-[11px] text-stone-400">No items on agenda yet</p>
+              <div className="rounded-md px-4 py-3" style={{ background: "#F8F8F9", border: "1px solid #E5E5E8" }}>
+                <p className="text-[11px]" style={{ color: "#9CA0AB" }}>No items on agenda yet</p>
               </div>
             )}
           </div>
 
           {/* Action Items */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
-            <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-stone-400">Action Items</h2>
+          <div className="rounded-lg bg-white px-5 py-5" style={{ border: "1px solid #E5E5E8" }}>
+            <h2 className="mb-5 text-[12px] font-semibold" style={{ color: "#1D2024" }}>Action Items</h2>
 
             {newItems.length === 0 && flagged.length === 0 && incompleteAgenda.length === 0 ? (
-              <div className="flex flex-col items-center py-8">
-                <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
-                  <span className="text-sm text-emerald-500">✓</span>
+              <div className="flex flex-col items-center py-10">
+                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full" style={{ background: "#F0FDF4" }}>
+                  <span className="text-[14px]" style={{ color: "#16A34A" }}>✓</span>
                 </div>
-                <p className="text-[12px] font-medium text-stone-600">Nothing needs attention</p>
+                <p className="text-[12px] font-medium" style={{ color: "#6B6F76" }}>Nothing needs attention</p>
               </div>
             ) : (
-              <div className="space-y-1.5 overflow-y-auto" style={{ maxHeight: "220px" }}>
+              <div className="space-y-0.5 overflow-y-auto" style={{ maxHeight: "240px" }}>
                 {newItems.slice(0, 3).map((e) => {
                   const meta = e.item_type ? TYPE_META[e.item_type] : null;
                   return (
-                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-stone-50">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-50 text-[9px] font-bold text-blue-600">
+                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-[#F8F8F9]">
+                      <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded" style={{ background: "#EEF0FF", color: "#5E6AD2", fontSize: "9px", fontWeight: 700 }}>
                         {meta?.short ?? "—"}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[12px] text-stone-700">{e.summary || e.email_subject}</p>
-                        <p className="text-[10px] text-stone-400">{e.department} · New</p>
+                        <p className="truncate text-[12px]" style={{ color: "#1D2024" }}>{e.summary || e.email_subject}</p>
+                        <p className="text-[11px]" style={{ color: "#9CA0AB" }}>{e.department} · New</p>
                       </div>
                     </button>
                   );
                 })}
                 {newItems.length > 3 && (
-                  <button onClick={() => onViewChange("review")} className="w-full rounded-lg px-2.5 py-1.5 text-left text-[11px] text-blue-600 transition-colors hover:bg-blue-50">
+                  <button onClick={() => onViewChange("review")} className="w-full rounded-md px-3 py-2 text-left text-[11px] font-medium transition-colors hover:bg-[#F8F8F9]" style={{ color: "#5E6AD2" }}>
                     +{newItems.length - 3} more to review →
                   </button>
                 )}
                 {flagged.slice(0, 2).map((e) => {
                   const meta = e.item_type ? TYPE_META[e.item_type] : null;
                   return (
-                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-stone-50">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-red-50 text-[9px] font-bold text-red-500">
+                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-[#F8F8F9]">
+                      <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded" style={{ background: "#FEF2F2", color: "#F2555A", fontSize: "9px", fontWeight: 700 }}>
                         {meta?.short ?? "—"}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[12px] text-stone-700">{e.summary || e.email_subject}</p>
-                        <p className="text-[10px] text-red-500">{e.department} · Needs Info</p>
+                        <p className="truncate text-[12px]" style={{ color: "#1D2024" }}>{e.summary || e.email_subject}</p>
+                        <p className="text-[11px]" style={{ color: "#F2555A" }}>{e.department} · Needs Info</p>
                       </div>
                     </button>
                   );
@@ -450,13 +447,13 @@ function CommandCenter({
                   });
                   const issues = completenessIssues(c);
                   return (
-                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-stone-50">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-amber-50 text-[9px] font-bold text-amber-600">
+                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-[#F8F8F9]">
+                      <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded" style={{ background: "#FFF8F0", color: "#B45309", fontSize: "9px", fontWeight: 700 }}>
                         {meta?.short ?? "—"}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[12px] text-stone-700">{e.summary || e.email_subject}</p>
-                        <p className="text-[10px] text-amber-600">On Agenda · {issues.join(", ")}</p>
+                        <p className="truncate text-[12px]" style={{ color: "#1D2024" }}>{e.summary || e.email_subject}</p>
+                        <p className="text-[11px]" style={{ color: "#B45309" }}>On Agenda · {issues.join(", ")}</p>
                       </div>
                     </button>
                   );
@@ -467,28 +464,28 @@ function CommandCenter({
         </div>
 
         {/* Bottom row */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {/* Department Breakdown */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
-            <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-stone-400">By Department</h2>
+          <div className="rounded-lg bg-white px-5 py-5" style={{ border: "1px solid #E5E5E8" }}>
+            <h2 className="mb-5 text-[12px] font-semibold" style={{ color: "#1D2024" }}>By Department</h2>
             {deptBreakdown.length === 0 ? (
-              <p className="py-4 text-center text-[11px] text-stone-400">No items yet</p>
+              <p className="py-6 text-center text-[11px]" style={{ color: "#9CA0AB" }}>No items yet</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {deptBreakdown.slice(0, 8).map(([dept, counts]) => (
                   <div key={dept} className="flex items-center justify-between gap-3">
-                    <span className="min-w-0 truncate text-[12px] text-stone-600">{dept}</span>
+                    <span className="min-w-0 truncate text-[12px]" style={{ color: "#6B6F76" }}>{dept}</span>
                     <div className="flex shrink-0 items-center gap-2">
                       {counts.new_ > 0 && (
-                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] tabular-nums font-medium text-blue-600">{counts.new_}</span>
+                        <span className="rounded px-1.5 py-0.5 text-[10px] tabular-nums font-medium" style={{ background: "#EEF0FF", color: "#5E6AD2" }}>{counts.new_}</span>
                       )}
                       {counts.accepted > 0 && (
-                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] tabular-nums font-medium text-emerald-600">{counts.accepted}</span>
+                        <span className="rounded px-1.5 py-0.5 text-[10px] tabular-nums font-medium" style={{ background: "#E8FAFE", color: "#0E8FA0" }}>{counts.accepted}</span>
                       )}
                       {counts.flagged > 0 && (
-                        <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] tabular-nums font-medium text-red-500">{counts.flagged}</span>
+                        <span className="rounded px-1.5 py-0.5 text-[10px] tabular-nums font-medium" style={{ background: "#FEF2F2", color: "#F2555A" }}>{counts.flagged}</span>
                       )}
-                      <span className="w-5 text-right text-[11px] tabular-nums text-stone-300">{counts.total}</span>
+                      <span className="w-5 text-right text-[11px] tabular-nums" style={{ color: "#D2D3D6" }}>{counts.total}</span>
                     </div>
                   </div>
                 ))}
@@ -497,22 +494,22 @@ function CommandCenter({
           </div>
 
           {/* Recent Activity */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
-            <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-stone-400">Recent Items</h2>
+          <div className="rounded-lg bg-white px-5 py-5" style={{ border: "1px solid #E5E5E8" }}>
+            <h2 className="mb-5 text-[12px] font-semibold" style={{ color: "#1D2024" }}>Recent Items</h2>
             {recent.length === 0 ? (
-              <p className="py-4 text-center text-[11px] text-stone-400">No items yet</p>
+              <p className="py-6 text-center text-[11px]" style={{ color: "#9CA0AB" }}>No items yet</p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-0.5">
                 {recent.map((e) => {
                   const meta = e.item_type ? TYPE_META[e.item_type] : null;
                   return (
-                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-stone-50">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-stone-100 text-[9px] font-bold text-stone-400">
+                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-[#F8F8F9]">
+                      <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded text-[9px] font-bold" style={{ background: "#F0F0F2", color: "#9CA0AB" }}>
                         {meta?.short ?? "—"}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[12px] text-stone-700">{e.summary || e.email_subject}</p>
-                        <p className="text-[10px] text-stone-400">{e.department} · {shortDate(e.created_at)}</p>
+                        <p className="truncate text-[12px]" style={{ color: "#1D2024" }}>{e.summary || e.email_subject}</p>
+                        <p className="text-[11px]" style={{ color: "#9CA0AB" }}>{e.department} · {shortDate(e.created_at)}</p>
                       </div>
                     </button>
                   );
@@ -545,33 +542,25 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
   ];
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-stone-200 bg-stone-50">
+    <aside className="flex w-56 shrink-0 flex-col" style={{ background: "#1F2023" }}>
       {/* Logo */}
       <div className="px-5 py-5">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-800">Office of the Clerk</p>
-        <p className="text-[10px] tracking-[0.2em] text-stone-400">Edison Township</p>
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-white">Office of the Clerk</p>
+        <p className="text-[10px] tracking-[0.2em]" style={{ color: "#6B6F76" }}>Edison Township</p>
       </div>
 
       {/* Nav */}
-      <nav className="mt-2 flex-1 overflow-y-auto px-3">
-        <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-widest text-stone-400">Workflow</p>
+      <nav className="mt-2 flex-1 overflow-y-auto px-3 pb-3">
+        <p className="sb-section-label mb-2 px-2.5">Workflow</p>
         {navItems.map((item) => (
           <button
             key={item.id}
             onClick={() => onViewChange(item.id)}
-            className={`mb-0.5 flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors ${
-              view === item.id
-                ? "bg-stone-200/60 font-medium text-stone-900"
-                : "text-stone-500 hover:bg-stone-100 hover:text-stone-700"
-            }`}
+            className={`sb-nav ${view === item.id ? "active" : ""}`}
           >
             {item.label}
             {item.count > 0 && (
-              <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium tabular-nums ${
-                view === item.id ? "bg-stone-300/50 text-stone-700" : "text-stone-400"
-              }`}>
-                {item.count}
-              </span>
+              <span className="sb-count">{item.count}</span>
             )}
           </button>
         ))}
@@ -579,27 +568,24 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
         {stats && (stats.needs_info ?? 0) > 0 && (
           <button
             onClick={() => onViewChange("needs_info")}
-            className={`mb-0.5 flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors ${
-              view === "needs_info"
-                ? "bg-stone-200/60 font-medium text-stone-900"
-                : "text-stone-500 hover:bg-stone-100 hover:text-stone-700"
-            }`}
+            className={`sb-nav ${view === "needs_info" ? "active" : ""}`}
           >
             Needs Info
-            <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-600">
-              {stats.needs_info}
-            </span>
+            <span className="sb-badge-red">{stats.needs_info}</span>
           </button>
         )}
 
+        <p className="sb-section-label mb-2 mt-5 px-2.5">Pages</p>
+        <a href="/meetings" className="sb-nav">Meeting Packets</a>
+
         <button
           onClick={() => setDeptsOpen((v) => !v)}
-          className="mb-2 mt-6 flex w-full items-center justify-between px-2 text-[10px] font-medium uppercase tracking-widest text-stone-400 transition-colors hover:text-stone-600"
+          className="sb-section-toggle mt-5 mb-1"
         >
           Departments
           <svg
             width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-            className={`transition-transform ${deptsOpen ? "" : "-rotate-90"}`}
+            className={`transition-transform duration-150 ${deptsOpen ? "" : "-rotate-90"}`}
           >
             <path d="M3 4.5L6 7.5L9 4.5" />
           </svg>
@@ -615,27 +601,21 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
               <button
                 key={dept.name}
                 onClick={() => onDeptFilter(deptFilter === dept.name ? null : dept.name)}
-                className={`mb-0.5 flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-[12px] transition-colors ${
-                  deptFilter === dept.name
-                    ? "bg-stone-200/60 font-semibold text-stone-900"
-                    : count > 0
-                      ? "text-stone-600 hover:bg-stone-100 hover:text-stone-800"
-                      : "text-stone-400 hover:bg-stone-100 hover:text-stone-600"
-                }`}
+                className={`sb-dept ${count > 0 ? "has-items" : ""} ${deptFilter === dept.name ? "active" : ""}`}
               >
                 <span className="flex items-center gap-1.5 truncate">
-                  <span className="w-3.5 text-center text-[10px] opacity-60">{dept.icon}</span>
+                  <span className="sb-dept-icon">{dept.icon}</span>
                   {dept.name}
                 </span>
-                <span className={`tabular-nums text-[11px] ${count > 0 ? (deptFilter === dept.name ? "text-stone-600" : "text-stone-400") : "text-stone-300"}`}>{count}</span>
+                <span className="sb-dept-count">{count}</span>
               </button>
             );
           });
         })()}
       </nav>
 
-      <div className="border-t border-stone-200/60 px-4 py-3">
-        <a href="/api/auth/gmail" className="block text-[11px] text-stone-400 transition-colors hover:text-stone-600">
+      <div className="sb-footer">
+        <a href="/api/auth/gmail" className="sb-footer-link">
           Gmail Settings →
         </a>
       </div>
@@ -662,14 +642,14 @@ function TopBar({
   const pct = total === 0 ? 0 : Math.round((processed / total) * 100);
 
   return (
-    <div className="border-b border-stone-200 bg-stone-50 px-6 py-4">
+    <div className="bg-white px-6 py-4" style={{ borderBottom: "1px solid #E5E5E8" }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-stone-400">Next Work Session</p>
-            <p className="mt-0.5 text-lg font-semibold tabular-nums text-stone-900">
+            <p className="text-[11px] font-medium uppercase tracking-widest" style={{ color: "#6B6F76" }}>Next Work Session</p>
+            <p className="mt-0.5 text-lg font-semibold tabular-nums" style={{ color: "#1D2024" }}>
               {ws.date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-              <span className={`ml-2 text-sm font-normal ${ws.days <= 2 ? "text-red-500" : ws.days <= 5 ? "text-amber-500" : "text-stone-400"}`}>
+              <span className={`ml-2 text-sm font-normal ${ws.days <= 2 ? "text-red-500" : ws.days <= 5 ? "text-amber-500" : ""}`} style={ws.days > 5 ? { color: "#9CA0AB" } : undefined}>
                 {ws.days === 0 ? "Today" : ws.days === 1 ? "Tomorrow" : `in ${ws.days}d`}
               </span>
             </p>
@@ -677,41 +657,44 @@ function TopBar({
 
           <div className="flex gap-6">
             {[
-              { label: "Review", value: stats?.new_count ?? 0, color: "text-blue-600" },
-              { label: "Accepted", value: stats?.accepted ?? 0, color: "text-emerald-600" },
-              { label: "Flagged", value: stats?.needs_info ?? 0, color: "text-red-500" },
+              { label: "Review", value: stats?.new_count ?? 0, color: "#5E6AD2" },
+              { label: "Accepted", value: stats?.accepted ?? 0, color: "#26B5CE" },
+              { label: "Flagged", value: stats?.needs_info ?? 0, color: "#F2555A" },
             ].map((s) => (
               <div key={s.label}>
-                <p className={`text-lg font-semibold tabular-nums ${s.color}`}>{s.value}</p>
-                <p className="text-[10px] text-stone-400">{s.label}</p>
+                <p className="text-lg font-semibold tabular-nums" style={{ color: s.color }}>{s.value}</p>
+                <p className="text-[10px]" style={{ color: "#6B6F76" }}>{s.label}</p>
               </div>
             ))}
           </div>
 
           {total > 0 && (
             <div className="flex items-center gap-3">
-              <div className="h-1.5 w-32 overflow-hidden rounded-full bg-stone-200/60">
+              <div className="h-1.5 w-32 overflow-hidden rounded-full" style={{ background: "#F0F0F2" }}>
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-500"
-                  style={{ width: `${pct}%` }}
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${pct}%`, background: "linear-gradient(to right, #5E6AD2, #26B5CE)" }}
                 />
               </div>
-              <span className="text-xs tabular-nums text-stone-400">{pct}%</span>
+              <span className="text-xs tabular-nums" style={{ color: "#9CA0AB" }}>{pct}%</span>
             </div>
           )}
         </div>
 
         <div className="flex items-center gap-3">
           {scanMessage && (
-            <span className="animate-fade-in text-xs text-stone-500">{scanMessage}</span>
+            <span className="animate-fade-in text-xs" style={{ color: "#6B6F76" }}>{scanMessage}</span>
           )}
           <button
             onClick={onScan}
             disabled={scanning}
-            className="glow-ring flex items-center gap-2 rounded-lg bg-stone-800 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-stone-700 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm transition-all disabled:opacity-50"
+            style={{ background: "#5E6AD2" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#4F5BC0")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#5E6AD2")}
           >
             {scanning && (
-              <span className="inline-block h-3 w-3 animate-spin rounded-full border-[1.5px] border-stone-500 border-t-white" />
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-[1.5px] border-slate-500 border-t-white" />
             )}
             {scanning ? "Scanning" : "Scan Inbox"}
           </button>
@@ -743,27 +726,27 @@ function ItemRow({
 
   return (
     <div
-      className="group flex cursor-pointer items-start gap-4 border-b border-stone-100 px-5 py-4 transition-colors hover:bg-stone-100/50"
+      className="group flex cursor-pointer items-start gap-4 border-b border-slate-100 px-5 py-4 transition-colors hover:bg-slate-100/50"
       onClick={onSelect}
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-200/50 text-[11px] font-bold tracking-wider text-stone-400">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-200/50 text-[11px] font-bold tracking-wider text-slate-400">
         {meta?.short ?? "—"}
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <p className="truncate text-[13px] font-medium text-stone-800">
+          <p className="truncate text-[13px] font-medium text-slate-800">
             {entry.summary || entry.email_subject}
           </p>
           {amount && (
             <span className="shrink-0 font-mono text-xs font-medium text-emerald-600">{amount}</span>
           )}
         </div>
-        <div className="mt-1 flex items-center gap-2 text-[11px] text-stone-400">
-          {entry.department && <span className="font-medium text-stone-500">{entry.department}</span>}
-          {entry.department && <span className="text-stone-300">·</span>}
+        <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
+          {entry.department && <span className="font-medium text-slate-500">{entry.department}</span>}
+          {entry.department && <span className="text-slate-300">·</span>}
           <span>{senderName(entry.email_from)}</span>
-          <span className="text-stone-300">·</span>
+          <span className="text-slate-300">·</span>
           <span>{shortDate(entry.email_date)}</span>
         </div>
 
@@ -795,7 +778,7 @@ function ItemRow({
             </button>
             <button
               onClick={() => onAction(entry.id, "rejected")}
-              className="rounded-md px-2.5 py-1 text-[11px] text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
+              className="rounded-md px-2.5 py-1 text-[11px] text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
             >
               Dismiss
             </button>
@@ -808,7 +791,7 @@ function ItemRow({
           <span className="rounded-md bg-red-50 px-2 py-1 text-[10px] font-medium text-red-600">Flagged</span>
         )}
         {entry.status === "rejected" && (
-          <span className="text-[10px] text-stone-300">Dismissed</span>
+          <span className="text-[10px] text-slate-300">Dismissed</span>
         )}
       </div>
 
@@ -817,7 +800,7 @@ function ItemRow({
         {entry.status === "reviewed" && <div className="h-2 w-2 rounded-full bg-yellow-500" />}
         {entry.status === "accepted" && <div className="h-2 w-2 rounded-full bg-emerald-500" />}
         {entry.status === "needs_info" && <div className="h-2 w-2 rounded-full bg-red-500" />}
-        {entry.status === "rejected" && <div className="h-2 w-2 rounded-full bg-stone-300" />}
+        {entry.status === "rejected" && <div className="h-2 w-2 rounded-full bg-slate-300" />}
       </div>
     </div>
   );
@@ -832,23 +815,23 @@ function AgendaPanel({ entries, onSelect }: { entries: DocketEntry[]; onSelect: 
     .filter((g) => g.items.length > 0);
 
   return (
-    <div className="h-full overflow-y-auto bg-stone-50">
+    <div className="h-full overflow-y-auto bg-slate-50">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-stone-900">Draft Agenda</h2>
-          <span className="tabular-nums text-xs text-stone-400">{accepted.length} items</span>
+          <h2 className="text-sm font-semibold text-slate-900">Draft Agenda</h2>
+          <span className="tabular-nums text-xs text-slate-400">{accepted.length} items</span>
         </div>
       </div>
 
       {accepted.length === 0 ? (
         <div className="px-5 py-12 text-center">
-          <p className="text-xs text-stone-400">Accept items to build the agenda</p>
+          <p className="text-xs text-slate-400">Accept items to build the agenda</p>
         </div>
       ) : (
         <div className="px-5 pb-5">
           {grouped.map((group) => (
             <div key={group.label} className="mb-4">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-stone-400">{group.label}</p>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">{group.label}</p>
               {group.items.map((item, i) => {
                 const fields = parseJson<ExtractedFields>(item.extracted_fields, {});
                 const amount = primaryAmount(fields);
@@ -856,12 +839,12 @@ function AgendaPanel({ entries, onSelect }: { entries: DocketEntry[]; onSelect: 
                   <button
                     key={item.id}
                     onClick={() => onSelect(item.id)}
-                    className="mb-1 flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-stone-100/50"
+                    className="mb-1 flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-slate-100/50"
                   >
-                    <span className="mt-px text-[10px] tabular-nums text-stone-300">{i + 1}</span>
+                    <span className="mt-px text-[10px] tabular-nums text-slate-300">{i + 1}</span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[12px] leading-snug text-stone-600">{item.summary || item.email_subject}</p>
-                      <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-stone-400">
+                      <p className="text-[12px] leading-snug text-slate-600">{item.summary || item.email_subject}</p>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400">
                         <span>{item.department}</span>
                         {amount && <span className="font-mono text-emerald-600">{amount}</span>}
                       </div>
@@ -1146,14 +1129,14 @@ function TrailSidebar({
   }, [emailId]);
 
   return (
-    <div className="animate-slide-in no-print fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-stone-200 bg-[#faf8f5] shadow-2xl">
+    <div className="animate-slide-in no-print fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-slate-200 bg-white shadow-2xl">
       {/* Header */}
-      <div className="flex items-start gap-3 border-b border-stone-200/60 p-5">
+      <div className="flex items-start gap-3 border-b border-slate-200/60 p-5">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Email Trail</p>
-          <h2 className="mt-1 text-[14px] font-semibold leading-snug text-stone-900">{subject}</h2>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Email Trail</p>
+          <h2 className="mt-1 text-[14px] font-semibold leading-snug text-slate-900">{subject}</h2>
         </div>
-        <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600">
+        <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
           <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4L4 12M4 4l8 8"/></svg>
         </button>
       </div>
@@ -1162,7 +1145,7 @@ function TrailSidebar({
       <div className="flex-1 overflow-y-auto">
         {loading && (
           <div className="flex items-center justify-center py-16">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-200 border-t-stone-500" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-500" />
           </div>
         )}
 
@@ -1173,12 +1156,12 @@ function TrailSidebar({
         )}
 
         {!loading && !error && messages.length === 0 && (
-          <div className="p-5 text-center text-[12px] text-stone-400">No messages found in this thread.</div>
+          <div className="p-5 text-center text-[12px] text-slate-400">No messages found in this thread.</div>
         )}
 
         {!loading && !error && messages.length > 0 && (
           <div className="p-4">
-            <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-stone-400">
+            <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               {messages.length} message{messages.length !== 1 ? "s" : ""} in thread
             </p>
             <div className="space-y-2">
@@ -1199,7 +1182,7 @@ function TrailSidebar({
                     className={`rounded-lg border transition-colors ${
                       isSource
                         ? "border-indigo-200 bg-indigo-50/50"
-                        : "border-stone-200/60 bg-white"
+                        : "border-slate-200/60 bg-white"
                     }`}
                   >
                     <button
@@ -1208,17 +1191,17 @@ function TrailSidebar({
                     >
                       {/* Message number */}
                       <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                        isSource ? "bg-indigo-200 text-indigo-700" : "bg-stone-200/60 text-stone-400"
+                        isSource ? "bg-indigo-200 text-indigo-700" : "bg-slate-200/60 text-slate-400"
                       }`}>
                         {idx + 1}
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-2">
-                          <p className="truncate text-[12px] font-medium text-stone-800">{fromName}</p>
-                          <span className="shrink-0 text-[10px] text-stone-400">{dateStr}</span>
+                          <p className="truncate text-[12px] font-medium text-slate-800">{fromName}</p>
+                          <span className="shrink-0 text-[10px] text-slate-400">{dateStr}</span>
                         </div>
                         {!isExpanded && (
-                          <p className="mt-0.5 truncate text-[11px] text-stone-400">
+                          <p className="mt-0.5 truncate text-[11px] text-slate-400">
                             {msg.snippet}
                           </p>
                         )}
@@ -1231,13 +1214,13 @@ function TrailSidebar({
                     </button>
 
                     {isExpanded && (
-                      <div className="border-t border-stone-200/40 px-3.5 pb-3.5 pt-3">
-                        <div className="mb-2 space-y-0.5 text-[10px] text-stone-400">
-                          <p><span className="font-medium text-stone-500">From:</span> {msg.from}</p>
-                          <p><span className="font-medium text-stone-500">To:</span> {msg.to}</p>
-                          {msg.subject && <p><span className="font-medium text-stone-500">Subject:</span> {msg.subject}</p>}
+                      <div className="border-t border-slate-200/40 px-3.5 pb-3.5 pt-3">
+                        <div className="mb-2 space-y-0.5 text-[10px] text-slate-400">
+                          <p><span className="font-medium text-slate-500">From:</span> {msg.from}</p>
+                          <p><span className="font-medium text-slate-500">To:</span> {msg.to}</p>
+                          {msg.subject && <p><span className="font-medium text-slate-500">Subject:</span> {msg.subject}</p>}
                         </div>
-                        <div className="max-h-64 overflow-y-auto rounded-lg bg-stone-100/60 p-3 font-mono text-[11px] leading-relaxed text-stone-600 whitespace-pre-wrap">
+                        <div className="max-h-64 overflow-y-auto rounded-lg bg-slate-100/60 p-3 font-mono text-[11px] leading-relaxed text-slate-600 whitespace-pre-wrap">
                           {msg.bodyText || msg.snippet || "(no content)"}
                         </div>
                       </div>
@@ -1281,16 +1264,16 @@ function LiveAgenda({
   });
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#f5f3ef]">
+    <div className="flex-1 overflow-y-auto bg-slate-50">
       {/* Toolbar */}
-      <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b border-stone-200/60 bg-[#faf8f5]/90 px-6 py-3 backdrop-blur-sm">
+      <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b border-slate-200/60 bg-white/90 px-6 py-3 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-stone-800">Live Agenda</h2>
-          <span className="tabular-nums text-xs text-stone-400">{accepted.length} items</span>
+          <h2 className="text-sm font-semibold text-slate-800">Live Agenda</h2>
+          <span className="tabular-nums text-xs text-slate-400">{accepted.length} items</span>
         </div>
         <button
           onClick={() => window.print()}
-          className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-100"
+          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
         >
           Print / Export
         </button>
@@ -1298,22 +1281,22 @@ function LiveAgenda({
 
       {/* Document */}
       <div className="mx-auto max-w-3xl px-6 py-10">
-        <div className="agenda-doc rounded-xl bg-white p-12 shadow-sm ring-1 ring-stone-200/60">
+        <div className="agenda-doc rounded-xl bg-white p-12 shadow-sm ring-1 ring-slate-200/60">
           {/* Header */}
           <div className="mb-10 text-center">
-            <p className="text-sm font-bold uppercase tracking-widest text-stone-800">
+            <p className="text-sm font-bold uppercase tracking-widest text-slate-800">
               AGENDA
             </p>
-            <h1 className="mt-2 text-xl font-bold tracking-wide text-stone-900">
+            <h1 className="mt-2 text-xl font-bold tracking-wide text-slate-900">
               MUNICIPAL COUNCIL
             </h1>
-            <p className="mt-1 text-base font-bold text-stone-900">
+            <p className="mt-1 text-base font-bold text-slate-900">
               REGULAR MEETING
             </p>
-            <div className="mx-auto mt-3 h-px w-24 bg-stone-300" />
-            <p className="mt-3 text-sm text-stone-600">{meetingDate}</p>
-            <p className="mt-1 text-xs text-stone-500">7:00 P.M.</p>
-            <p className="mt-3 text-[11px] uppercase tracking-widest text-stone-400">
+            <div className="mx-auto mt-3 h-px w-24 bg-slate-300" />
+            <p className="mt-3 text-sm text-slate-600">{meetingDate}</p>
+            <p className="mt-1 text-xs text-slate-500">7:00 P.M.</p>
+            <p className="mt-3 text-[11px] uppercase tracking-widest text-slate-400">
               Municipal Council Chambers &mdash; Edison Municipal Complex
             </p>
           </div>
@@ -1321,7 +1304,7 @@ function LiveAgenda({
           {/* Empty state */}
           {accepted.length === 0 && (
             <div className="py-16 text-center">
-              <p className="text-sm italic text-stone-400">
+              <p className="text-sm italic text-slate-400">
                 No items on the agenda. Accept items from the Review queue to populate this document.
               </p>
             </div>
@@ -1334,15 +1317,15 @@ function LiveAgenda({
 
             return (
               <div key={section.label} className={sectionIdx > 0 ? "mt-10" : ""}>
-                <div className="mb-6 border-b-2 border-stone-800 pb-2">
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-stone-800">
+                <div className="mb-6 border-b-2 border-slate-800 pb-2">
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-slate-800">
                     {SECTION_HEADERS[section.label] ?? section.label}
                   </h2>
                 </div>
 
                 {/* Consent agenda note */}
                 {section.label === "Resolutions" && (
-                  <p className="mb-6 text-[12px] italic leading-relaxed text-stone-500">
+                  <p className="mb-6 text-[12px] italic leading-relaxed text-slate-500">
                     All items listed under the Consent Agenda are considered to be routine by the Municipal Council and will be enacted by one motion in the form listed. There will be no separate discussion of these items. If discussion is desired, that item will be removed from the Consent Agenda and will be considered separately.
                   </p>
                 )}
@@ -1368,29 +1351,29 @@ function LiveAgenda({
                       {/* Item number + type + department */}
                       <div className="mb-2 flex items-center gap-3">
                         {resolutionNum && (
-                          <span className="mono-num text-xs font-bold text-stone-500">{resolutionNum}</span>
+                          <span className="mono-num text-xs font-bold text-slate-500">{resolutionNum}</span>
                         )}
                         {!isResolution && (
-                          <span className="mono-num text-xs font-bold text-stone-400">
+                          <span className="mono-num text-xs font-bold text-slate-400">
                             {String(itemIdx + 1).padStart(2, "0")}
                           </span>
                         )}
-                        <span className="rounded bg-stone-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-stone-500">
+                        <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                           {TYPE_META[item.item_type ?? ""]?.label ?? "Item"}
                         </span>
                         {item.department && (
-                          <span className="text-[10px] text-stone-400">{item.department}</span>
+                          <span className="text-[10px] text-slate-400">{item.department}</span>
                         )}
                         <div className="no-print ml-auto flex gap-1 opacity-0 transition-all group-hover:opacity-100">
                           <button
                             onClick={() => { setTrailEmailId(item.email_id); setTrailSubject(item.email_subject); }}
-                            className="rounded px-2 py-0.5 text-[10px] text-stone-300 transition-all hover:bg-indigo-50 hover:text-indigo-500"
+                            className="rounded px-2 py-0.5 text-[10px] text-slate-300 transition-all hover:bg-indigo-50 hover:text-indigo-500"
                           >
                             Trail
                           </button>
                           <button
                             onClick={() => onAction(item.id, "new")}
-                            className="rounded px-2 py-0.5 text-[10px] text-stone-300 transition-all hover:bg-red-50 hover:text-red-500"
+                            className="rounded px-2 py-0.5 text-[10px] text-slate-300 transition-all hover:bg-red-50 hover:text-red-500"
                           >
                             Remove
                           </button>
@@ -1422,21 +1405,21 @@ function LiveAgenda({
                         return (
                           <div className="pl-6">
                             {clause.whereas.map((w, wi) => (
-                              <p key={wi} className="mb-2 text-[13px] leading-relaxed text-stone-700">
+                              <p key={wi} className="mb-2 text-[13px] leading-relaxed text-slate-700">
                                 <span className="font-bold">WHEREAS, </span>
                                 {w}
                                 {wi < clause.whereas.length - 1 ? "; and" : ";"}
                               </p>
                             ))}
-                            <p className="mt-4 text-[13px] leading-relaxed text-stone-700">
+                            <p className="mt-4 text-[13px] leading-relaxed text-slate-700">
                               <span className="font-bold">NOW, THEREFORE, BE IT RESOLVED </span>
                               by the Municipal Council of the Township of Edison, County of Middlesex, State of New Jersey, that {clause.resolved}; and
                             </p>
-                            <p className="mt-2 text-[13px] leading-relaxed text-stone-700">
+                            <p className="mt-2 text-[13px] leading-relaxed text-slate-700">
                               <span className="font-bold">BE IT FURTHER RESOLVED </span>
                               that the aforementioned recitals are incorporated herein as though fully set forth at length; and
                             </p>
-                            <p className="mt-2 text-[13px] leading-relaxed text-stone-700">
+                            <p className="mt-2 text-[13px] leading-relaxed text-slate-700">
                               <span className="font-bold">BE IT FURTHER RESOLVED </span>
                               that a certified copy of this Resolution shall be forwarded to {clause.cfoNote ? "the Chief Financial Officer, " : ""}the Township Clerk, and any other interested parties.
                             </p>
@@ -1447,31 +1430,31 @@ function LiveAgenda({
                               const fundItems = lineItems.filter((li) => !/total/i.test(li.payee));
                               return (
                                 <div className="mt-8">
-                                  <p className="mb-1 text-center text-[13px] font-bold uppercase tracking-wide text-stone-800">
+                                  <p className="mb-1 text-center text-[13px] font-bold uppercase tracking-wide text-slate-800">
                                     Report of Disbursements
                                   </p>
-                                  <p className="mb-4 text-center text-[12px] text-stone-500">
+                                  <p className="mb-4 text-center text-[12px] text-slate-500">
                                     For the Period Ending {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
                                   </p>
                                   <table className="w-full border-collapse text-[12.5px]">
                                     <thead>
-                                      <tr className="border-b-2 border-stone-800">
-                                        <th className="pb-1.5 text-left font-bold uppercase text-stone-800">Fund</th>
-                                        <th className="pb-1.5 text-right font-bold uppercase text-stone-800">Amount</th>
+                                      <tr className="border-b-2 border-slate-800">
+                                        <th className="pb-1.5 text-left font-bold uppercase text-slate-800">Fund</th>
+                                        <th className="pb-1.5 text-right font-bold uppercase text-slate-800">Amount</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {fundItems.map((li, liIdx) => (
                                         <tr key={liIdx}>
-                                          <td className="py-1 text-stone-700">{li.payee}</td>
-                                          <td className="py-1 text-right font-mono tabular-nums text-stone-700">{li.amount}</td>
+                                          <td className="py-1 text-slate-700">{li.payee}</td>
+                                          <td className="py-1 text-right font-mono tabular-nums text-slate-700">{li.amount}</td>
                                         </tr>
                                       ))}
                                     </tbody>
                                     <tfoot>
-                                      <tr className="border-t-2 border-stone-800">
-                                        <td className="pt-2 font-bold uppercase text-stone-900">Total</td>
-                                        <td className="pt-2 text-right font-mono font-bold tabular-nums text-stone-900">
+                                      <tr className="border-t-2 border-slate-800">
+                                        <td className="pt-2 font-bold uppercase text-slate-900">Total</td>
+                                        <td className="pt-2 text-right font-mono font-bold tabular-nums text-slate-900">
                                           {totalItem?.amount ?? primaryAmount(fields) ?? "—"}
                                         </td>
                                       </tr>
@@ -1487,11 +1470,11 @@ function LiveAgenda({
                       {/* Ordinance */}
                       {isOrdinance && (
                         <div className="pl-6">
-                          <p className="text-[13px] font-bold uppercase leading-relaxed tracking-wide text-stone-800">
+                          <p className="text-[13px] font-bold uppercase leading-relaxed tracking-wide text-slate-800">
                             {generateOrdinanceTitle(item.item_type!, fields, item.summary)}
                           </p>
                           {item.summary && (
-                            <p className="mt-2 text-[13px] italic leading-relaxed text-stone-600">
+                            <p className="mt-2 text-[13px] italic leading-relaxed text-slate-600">
                               {item.summary}
                             </p>
                           )}
@@ -1501,11 +1484,11 @@ function LiveAgenda({
                       {/* Discussion / Other */}
                       {!isResolution && !isOrdinance && (
                         <div className="pl-6">
-                          <p className="text-[13px] leading-relaxed text-stone-700">
+                          <p className="text-[13px] leading-relaxed text-slate-700">
                             {item.summary || item.email_subject}
                           </p>
                           {typeof fields.recommended_action === "string" && (
-                            <p className="mt-1 text-[12px] italic text-stone-500">
+                            <p className="mt-1 text-[12px] italic text-slate-500">
                               Recommended action: {fields.recommended_action}
                             </p>
                           )}
@@ -1514,7 +1497,7 @@ function LiveAgenda({
 
                       {/* Separator */}
                       {itemIdx < section.items.length - 1 && (
-                        <div className="mt-6 border-b border-stone-200/50" />
+                        <div className="mt-6 border-b border-slate-200/50" />
                       )}
                     </div>
                   );
@@ -1525,9 +1508,9 @@ function LiveAgenda({
 
           {/* Footer */}
           {accepted.length > 0 && (
-            <div className="mt-12 border-t border-stone-300 pt-6 text-center">
-              <p className="text-[11px] uppercase tracking-widest text-stone-400">End of Agenda</p>
-              <p className="mt-1 text-[10px] text-stone-300">
+            <div className="mt-12 border-t border-slate-300 pt-6 text-center">
+              <p className="text-[11px] uppercase tracking-widest text-slate-400">End of Agenda</p>
+              <p className="mt-1 text-[10px] text-slate-300">
                 {accepted.length} item{accepted.length !== 1 ? "s" : ""} total
                 {" \u00B7 "}
                 Generated {new Date().toLocaleDateString("en-US", {
@@ -1543,7 +1526,7 @@ function LiveAgenda({
       {/* Trail sidebar overlay */}
       {trailEmailId && (
         <>
-          <div className="animate-fade-in fixed inset-0 z-40 bg-stone-900/15 backdrop-blur-sm" onClick={() => setTrailEmailId(null)} />
+          <div className="animate-fade-in fixed inset-0 z-40 bg-slate-900/15 backdrop-blur-sm" onClick={() => setTrailEmailId(null)} />
           <TrailSidebar emailId={trailEmailId} subject={trailSubject} onClose={() => setTrailEmailId(null)} />
         </>
       )}
@@ -1583,22 +1566,22 @@ function DetailDrawer({
   ];
 
   return (
-    <div className="animate-slide-in fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-stone-200 bg-[#faf8f5] shadow-2xl">
+    <div className="animate-slide-in fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-slate-200 bg-white shadow-2xl">
       {/* Header */}
-      <div className="flex items-start gap-3 border-b border-stone-200/60 p-5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-stone-200/50 text-xs font-bold tracking-wider text-stone-400">
+      <div className="flex items-start gap-3 border-b border-slate-200/60 p-5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-200/50 text-xs font-bold tracking-wider text-slate-400">
           {meta?.short ?? "—"}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
             {meta?.label ?? "Item"} {entry.department && `· ${entry.department}`}
           </p>
-          <h2 className="mt-1 text-[15px] font-semibold leading-snug text-stone-900">{entry.email_subject}</h2>
-          <p className="mt-1 text-[11px] text-stone-400">
+          <h2 className="mt-1 text-[15px] font-semibold leading-snug text-slate-900">{entry.email_subject}</h2>
+          <p className="mt-1 text-[11px] text-slate-400">
             {senderName(entry.email_from)} · {fullDate(entry.email_date)}
           </p>
         </div>
-        <button onClick={onClose} className="glow-ring shrink-0 rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600">
+        <button onClick={onClose} className="glow-ring shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
           <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4L4 12M4 4l8 8"/></svg>
         </button>
       </div>
@@ -1606,7 +1589,7 @@ function DetailDrawer({
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {/* AI Summary */}
-        <div className="border-b border-stone-200/60 p-5">
+        <div className="border-b border-slate-200/60 p-5">
           <div className="rounded-xl bg-indigo-50/80 p-4">
             <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-indigo-400">Summary</p>
             <p className="text-[13px] leading-relaxed text-indigo-900">{entry.summary}</p>
@@ -1615,15 +1598,15 @@ function DetailDrawer({
 
         {/* Extracted data */}
         {nonNull.length > 0 && (
-          <div className="border-b border-stone-200/60 p-5">
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-stone-400">Extracted Data</p>
+          <div className="border-b border-slate-200/60 p-5">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Extracted Data</p>
             <div className="space-y-2">
               {nonNull
                 .filter(([key]) => key !== "line_items")
                 .map(([key, value]) => (
                 <div key={key} className="flex items-baseline justify-between gap-4">
-                  <span className="text-[11px] text-stone-400">{formatKey(key)}</span>
-                  <span className="text-right font-mono text-[11px] text-stone-700">
+                  <span className="text-[11px] text-slate-400">{formatKey(key)}</span>
+                  <span className="text-right font-mono text-[11px] text-slate-700">
                     {Array.isArray(value) ? (value as string[]).join(", ") : String(value)}
                   </span>
                 </div>
@@ -1637,32 +1620,32 @@ function DetailDrawer({
           const totalItem = fields.line_items.find((li) => /total/i.test(li.payee));
           const fundItems = fields.line_items.filter((li) => !/total/i.test(li.payee));
           return (
-            <div className="border-b border-stone-200/60 p-5">
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-stone-400">
+            <div className="border-b border-slate-200/60 p-5">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                 Report of Disbursements
-                <span className="ml-1.5 normal-case tracking-normal text-stone-300">{fundItems.length} funds</span>
+                <span className="ml-1.5 normal-case tracking-normal text-slate-300">{fundItems.length} funds</span>
               </p>
               <div className="max-h-72 overflow-y-auto">
                 <table className="w-full border-collapse text-[11px]">
                   <thead>
-                    <tr className="border-b-2 border-stone-300">
-                      <th className="pb-1 text-left text-[10px] font-semibold uppercase tracking-wider text-stone-500">Fund</th>
-                      <th className="pb-1 text-right text-[10px] font-semibold uppercase tracking-wider text-stone-500">Amount</th>
+                    <tr className="border-b-2 border-slate-300">
+                      <th className="pb-1 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500">Fund</th>
+                      <th className="pb-1 text-right text-[10px] font-semibold uppercase tracking-wider text-slate-500">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {fundItems.map((li, i) => (
                       <tr key={i}>
-                        <td className="py-1 text-stone-600">{li.payee}</td>
-                        <td className="py-1 text-right font-mono tabular-nums text-stone-600">{li.amount}</td>
+                        <td className="py-1 text-slate-600">{li.payee}</td>
+                        <td className="py-1 text-right font-mono tabular-nums text-slate-600">{li.amount}</td>
                       </tr>
                     ))}
                   </tbody>
                   {totalItem && (
                     <tfoot>
-                      <tr className="border-t-2 border-stone-300">
-                        <td className="pt-2 text-[11px] font-bold text-stone-800">TOTAL</td>
-                        <td className="pt-2 text-right font-mono text-[11px] font-bold tabular-nums text-stone-800">{totalItem.amount}</td>
+                      <tr className="border-t-2 border-slate-300">
+                        <td className="pt-2 text-[11px] font-bold text-slate-800">TOTAL</td>
+                        <td className="pt-2 text-right font-mono text-[11px] font-bold tabular-nums text-slate-800">{totalItem.amount}</td>
                       </tr>
                     </tfoot>
                   )}
@@ -1673,8 +1656,8 @@ function DetailDrawer({
         })()}
 
         {/* Completeness */}
-        <div className="border-b border-stone-200/60 p-5">
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-stone-400">
+        <div className="border-b border-slate-200/60 p-5">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
             Completeness
             {hasIssues
               ? <span className="ml-1.5 normal-case tracking-normal text-amber-500">· {issues.length} issue{issues.length > 1 ? "s" : ""}</span>
@@ -1683,18 +1666,18 @@ function DetailDrawer({
           </p>
           <div className="grid grid-cols-2 gap-1.5">
             {flags.map((f) => (
-              <div key={f.key} className={`flex items-center gap-2 rounded-lg px-3 py-2 ${f.on ? "bg-amber-50" : "bg-stone-100/60"}`}>
+              <div key={f.key} className={`flex items-center gap-2 rounded-lg px-3 py-2 ${f.on ? "bg-amber-50" : "bg-slate-100/60"}`}>
                 <span className={`text-[11px] ${f.on ? "text-amber-500" : "text-emerald-500"}`}>
                   {f.on ? "⚠" : "✓"}
                 </span>
-                <span className={`text-[11px] ${f.on ? "text-amber-700" : "text-stone-400"}`}>{f.label}</span>
+                <span className={`text-[11px] ${f.on ? "text-amber-700" : "text-slate-400"}`}>{f.label}</span>
               </div>
             ))}
           </div>
           {comp.notes.length > 0 && (
-            <div className="mt-3 space-y-1 rounded-lg bg-stone-100/60 p-3">
+            <div className="mt-3 space-y-1 rounded-lg bg-slate-100/60 p-3">
               {comp.notes.map((n, i) => (
-                <p key={i} className="text-[11px] text-stone-500">· {n}</p>
+                <p key={i} className="text-[11px] text-slate-500">· {n}</p>
               ))}
             </div>
           )}
@@ -1702,14 +1685,14 @@ function DetailDrawer({
 
         {/* Attachments */}
         {attachments.length > 0 && (
-          <div className="border-b border-stone-200/60 p-5">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-stone-400">
-              Attachments <span className="text-stone-300">{attachments.length}</span>
+          <div className="border-b border-slate-200/60 p-5">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+              Attachments <span className="text-slate-300">{attachments.length}</span>
             </p>
             <div className="space-y-1">
               {attachments.map((f, i) => (
-                <div key={i} className="flex items-center gap-2 rounded-lg bg-stone-100/60 px-3 py-2 text-[11px] text-stone-500">
-                  <span className="text-stone-300">◆</span>
+                <div key={i} className="flex items-center gap-2 rounded-lg bg-slate-100/60 px-3 py-2 text-[11px] text-slate-500">
+                  <span className="text-slate-300">◆</span>
                   {f}
                 </div>
               ))}
@@ -1720,8 +1703,8 @@ function DetailDrawer({
         {/* Original email */}
         {entry.email_body_preview && (
           <div className="p-5">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-stone-400">Source Email</p>
-            <div className="max-h-36 overflow-y-auto rounded-lg bg-stone-100/60 p-3 font-mono text-[11px] leading-relaxed text-stone-500 whitespace-pre-wrap">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Source Email</p>
+            <div className="max-h-36 overflow-y-auto rounded-lg bg-slate-100/60 p-3 font-mono text-[11px] leading-relaxed text-slate-500 whitespace-pre-wrap">
               {entry.email_body_preview}
             </div>
           </div>
@@ -1729,7 +1712,7 @@ function DetailDrawer({
       </div>
 
       {/* Action bar */}
-      <div className="border-t border-stone-200 bg-stone-100/60 p-4">
+      <div className="border-t border-slate-200 bg-slate-100/60 p-4">
         <div className="flex gap-2">
           {entry.status !== "accepted" && entry.status !== "on_agenda" && (
             <button
@@ -1750,7 +1733,7 @@ function DetailDrawer({
           {entry.status === "accepted" && (
             <button
               onClick={() => onAction(entry.id, "new")}
-              className="flex-1 rounded-lg border border-stone-200 bg-stone-50 py-2.5 text-[13px] font-medium text-stone-600 transition-colors hover:bg-stone-100"
+              className="flex-1 rounded-lg border border-slate-200 bg-slate-50 py-2.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100"
             >
               Remove from Agenda
             </button>
@@ -1758,7 +1741,7 @@ function DetailDrawer({
           {entry.status !== "rejected" && entry.status !== "accepted" && (
             <button
               onClick={() => onAction(entry.id, "rejected")}
-              className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-2.5 text-[13px] text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
+              className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px] text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
             >
               Dismiss
             </button>
@@ -1838,7 +1821,7 @@ export default function DashboardPage() {
     : viewFiltered;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f5f3ef]">
+    <div className="flex h-screen overflow-hidden" style={{ background: "#F8F8F9" }}>
       <Sidebar view={view} onViewChange={setView} stats={stats} deptFilter={deptFilter} onDeptFilter={setDeptFilter} />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -1846,20 +1829,20 @@ export default function DashboardPage() {
 
         {loading ? (
           <div className="flex flex-1 items-center justify-center">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-200 border-t-stone-500" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2" style={{ borderColor: "#E5E5E8", borderTopColor: "#5E6AD2" }} />
           </div>
         ) : entries.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-200/50">
-              <span className="text-xl text-stone-400">◇</span>
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: "#F0F0F2" }}>
+              <span className="text-xl" style={{ color: "#9CA0AB" }}>◇</span>
             </div>
-            <p className="text-sm font-medium text-stone-700">No items yet</p>
-            <p className="mt-1 text-xs text-stone-400">Connect Gmail and scan your inbox to get started</p>
+            <p className="text-sm font-medium" style={{ color: "#1D2024" }}>No items yet</p>
+            <p className="mt-1 text-xs" style={{ color: "#9CA0AB" }}>Connect Gmail and scan your inbox to get started</p>
             <div className="mt-5 flex gap-2">
-              <a href="/api/auth/gmail" className="glow-ring rounded-lg bg-stone-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700">
+              <a href="/api/auth/gmail" className="rounded-md px-4 py-2 text-sm font-medium text-white transition" style={{ background: "#5E6AD2" }}>
                 Connect Gmail
               </a>
-              <button onClick={doScan} className="glow-ring rounded-lg border border-stone-200 bg-stone-50 px-4 py-2 text-sm text-stone-600 transition hover:bg-stone-100">
+              <button onClick={doScan} className="rounded-md px-4 py-2 text-sm transition" style={{ border: "1px solid #E5E5E8", color: "#6B6F76" }}>
                 Scan Inbox
               </button>
             </div>
@@ -1871,23 +1854,23 @@ export default function DashboardPage() {
         ) : (
           <div className="flex min-h-0 flex-1">
             <div className="min-w-0 flex-1 overflow-y-auto">
-              <div className="sticky top-0 z-10 border-b border-stone-200/60 bg-[#faf8f5]/90 px-5 py-3 backdrop-blur-sm">
+              <div className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/90 px-5 py-3 backdrop-blur-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-semibold text-stone-800">
+                    <h2 className="text-sm font-semibold text-slate-800">
                       {view === "review" ? "Review Queue" : view === "agenda" ? "Accepted Items" : view === "needs_info" ? "Needs Information" : "All Items"}
                     </h2>
                     {deptFilter && (
                       <button
                         onClick={() => setDeptFilter(null)}
-                        className="flex items-center gap-1 rounded-md bg-stone-200/60 px-2 py-0.5 text-[11px] font-medium text-stone-600 transition-colors hover:bg-stone-200"
+                        className="flex items-center gap-1 rounded-md bg-slate-200/60 px-2 py-0.5 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-200"
                       >
                         {deptFilter}
-                        <span className="text-stone-400">×</span>
+                        <span className="text-slate-400">×</span>
                       </button>
                     )}
                   </div>
-                  <span className="tabular-nums text-xs text-stone-400">{display.length}</span>
+                  <span className="tabular-nums text-xs text-slate-400">{display.length}</span>
                 </div>
               </div>
 
@@ -1896,11 +1879,11 @@ export default function DashboardPage() {
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
                     <span className="text-sm text-emerald-500">✓</span>
                   </div>
-                  <p className="text-sm font-medium text-stone-700">All caught up</p>
-                  <p className="mt-1 text-[11px] text-stone-400">No items waiting for review</p>
+                  <p className="text-sm font-medium text-slate-700">All caught up</p>
+                  <p className="mt-1 text-[11px] text-slate-400">No items waiting for review</p>
                 </div>
               ) : (
-                <div className="bg-[#faf8f5]">
+                <div className="bg-white">
                   {display.map((entry) => (
                     <ItemRow
                       key={entry.id}
@@ -1913,7 +1896,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <div className="hidden w-72 shrink-0 border-l border-stone-200/60 lg:block">
+            <div className="hidden w-72 shrink-0 border-l border-slate-200/60 lg:block">
               <AgendaPanel entries={entries} onSelect={(id) => setSelectedId(id)} />
             </div>
           </div>
@@ -1922,7 +1905,7 @@ export default function DashboardPage() {
 
       {selected && (
         <>
-          <div className="animate-fade-in fixed inset-0 z-40 bg-stone-900/15 backdrop-blur-sm" onClick={() => setSelectedId(null)} />
+          <div className="animate-fade-in fixed inset-0 z-40 bg-slate-900/15 backdrop-blur-sm" onClick={() => setSelectedId(null)} />
           <DetailDrawer entry={selected} onClose={() => setSelectedId(null)} onAction={doAction} />
         </>
       )}

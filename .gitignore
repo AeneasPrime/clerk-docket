@@ -35,7 +35,7 @@ yarn-error.log*
 !.env.example
 
 # SQLite database files
-data/docket.db
+*.db
 data/*.db-wal
 data/*.db-shm
 

@@ -113,3 +113,30 @@ export interface ScanResult {
   docket_entries_created: number;
   errors: string[];
 }
+
+// --- Meetings ---
+
+export type MeetingType = "work_session" | "regular";
+export type MeetingStatus = "upcoming" | "in_progress" | "completed";
+
+export interface Meeting {
+  id: number;
+  meeting_type: MeetingType;
+  meeting_date: string;
+  cycle_date: string;
+  video_url: string | null;
+  minutes: string;
+  status: MeetingStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MeetingCycle {
+  cycle_date: string;
+  work_session: Meeting | null;
+  regular_meeting: Meeting | null;
+}
+
+export interface MeetingWithAgenda extends Meeting {
+  agenda_items: DocketEntry[];
+}

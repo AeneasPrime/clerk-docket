@@ -12,8 +12,8 @@
 
 body {
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
-  background: #f5f3ef;
-  color: #1c1917;
+  background: #F8F8F9;
+  color: #1D2024;
 }
 
 ::-webkit-scrollbar {
@@ -28,6 +28,168 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(120, 113, 100, 0.25);
+}
+
+/* Sidebar section labels */
+.sb-section-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6B6F76;
+}
+
+/* Sidebar section toggle (Departments header) */
+.sb-section-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6B6F76;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.sb-section-toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #B0B3BA;
+}
+
+/* Sidebar nav items */
+.sb-nav {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 6px;
+  padding: 7px 10px;
+  text-align: left;
+  font-size: 13px;
+  color: #9CA0AB;
+  background: transparent;
+  transition: background 150ms ease, color 150ms ease;
+  cursor: pointer;
+  border: none;
+  margin-bottom: 1px;
+}
+.sb-nav:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #E5E5E8;
+}
+.sb-nav.active {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+  font-weight: 500;
+}
+.sb-nav.active:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Nav count badge */
+.sb-count {
+  font-size: 10px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: #6B6F76;
+  padding: 1px 6px;
+  border-radius: 4px;
+  transition: color 150ms ease;
+}
+.sb-nav.active .sb-count {
+  color: #B0B3BA;
+}
+
+/* Red badge (Needs Info) */
+.sb-badge-red {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+}
+
+/* Sidebar department items */
+.sb-dept {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 6px;
+  padding: 5px 10px;
+  text-align: left;
+  font-size: 12px;
+  color: #7A7E85;
+  background: transparent;
+  transition: background 150ms ease, color 150ms ease;
+  cursor: pointer;
+  border: none;
+  margin-bottom: 1px;
+}
+.sb-dept.has-items {
+  color: #B0B3BA;
+}
+.sb-dept:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #E5E5E8;
+}
+.sb-dept.active {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+  font-weight: 600;
+}
+.sb-dept.active:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sb-dept-icon {
+  width: 16px;
+  text-align: center;
+  font-size: 13px;
+  opacity: 0.65;
+  transition: opacity 150ms ease;
+}
+.sb-dept:hover .sb-dept-icon {
+  opacity: 0.8;
+}
+.sb-dept.active .sb-dept-icon {
+  opacity: 0.9;
+}
+
+.sb-dept-count {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: #3A3D42;
+  transition: color 150ms ease;
+}
+.sb-dept.has-items .sb-dept-count {
+  color: #6B6F76;
+}
+.sb-dept.active .sb-dept-count {
+  color: #B0B3BA;
+}
+
+/* Sidebar footer */
+.sb-footer {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sb-footer-link {
+  display: block;
+  font-size: 11px;
+  color: #6B6F76;
+  transition: color 150ms ease;
+  text-decoration: none;
+}
+.sb-footer-link:hover {
+  color: #E5E5E8;
 }
 
 .glow-ring:focus-visible {
