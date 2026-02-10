@@ -7,7 +7,13 @@ import os from "os";
 import type { DocketEntry } from "@/types";
 import { getMeeting, getAgendaItemsForMeeting, updateMeeting } from "./db";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+let _anthropic: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (!_anthropic) {
+    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  }
+  return _anthropic;
+}
 
 const CABLECAST_API = "https://cablecast.edisonnj.org/CablecastAPI/v1";
 
@@ -499,7 +505,7 @@ export async function generateMinutes(
   const systemPrompt = buildSystemPrompt(meetingType, transcriptSource);
   const userMessage = buildUserMessage(meeting, transcript, chapters, agendaItems);
 
-  const response = await client.messages.create({
+  const response = await getClient().messages.create({
     model: "claude-sonnet-4-5-20250929",
     max_tokens: 16000,
     system: systemPrompt,
