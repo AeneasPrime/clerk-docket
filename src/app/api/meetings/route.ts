@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureMeetingsGenerated, getMeetingCycles } from "@/lib/db";
-import { syncVideosFromEdisonTV } from "@/lib/video-sync";
+import { syncVideosFromCablecast } from "@/lib/video-sync";
 import { checkPendingMinutesGeneration } from "@/lib/minutes-generator";
 
 export async function GET(request: NextRequest) {
   try {
     ensureMeetingsGenerated();
 
-    // Auto-sync videos from EdisonTV
-    await syncVideosFromEdisonTV();
+    // Auto-sync videos from Cablecast
+    await syncVideosFromCablecast();
 
     // Check for any past meetings that need minutes generated
     checkPendingMinutesGeneration();

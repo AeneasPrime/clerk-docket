@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
-import type { ClassificationResult, DocketEntry, DocketStatus, Meeting, MeetingCycle, MeetingStatus } from "@/types";
+import type { ClassificationResult, DocketEntry, DocketStatus, Meeting, MeetingCycle, MeetingStatus, OrdinanceTracking } from "@/types";
 
 const dbPath = process.env.DATABASE_PATH || "./data/docket.db";
 const dbDir = path.dirname(dbPath);
@@ -53,6 +53,16 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_docket_relevant ON docket(relevant);
   CREATE INDEX IF NOT EXISTS idx_docket_created_at ON docket(created_at);
 
+  CREATE TABLE IF NOT EXISTS docket_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    docket_id INTEGER NOT NULL REFERENCES docket(id),
+    field_name TEXT NOT NULL,
+    old_value TEXT NOT NULL,
+    new_value TEXT NOT NULL,
+    changed_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_docket_history_docket ON docket_history(docket_id);
+
   CREATE TABLE IF NOT EXISTS meetings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     meeting_type TEXT NOT NULL CHECK(meeting_type IN ('work_session', 'regular')),
@@ -67,7 +77,38 @@ db.exec(`
 
   CREATE UNIQUE INDEX IF NOT EXISTS idx_meetings_type_date ON meetings(meeting_type, meeting_date);
   CREATE INDEX IF NOT EXISTS idx_meetings_cycle ON meetings(cycle_date);
+
+  CREATE TABLE IF NOT EXISTS ordinance_tracking (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    docket_id INTEGER NOT NULL UNIQUE REFERENCES docket(id) ON DELETE CASCADE,
+    ordinance_number TEXT,
+    introduction_date TEXT,
+    introduction_meeting TEXT,
+    pub_intro_date TEXT,
+    pub_intro_newspaper TEXT,
+    bulletin_posted_date TEXT,
+    hearing_date TEXT,
+    hearing_amended INTEGER DEFAULT 0,
+    hearing_notes TEXT DEFAULT '',
+    adoption_date TEXT,
+    adoption_vote TEXT,
+    adoption_failed INTEGER DEFAULT 0,
+    pub_final_date TEXT,
+    pub_final_newspaper TEXT,
+    effective_date TEXT,
+    is_emergency INTEGER DEFAULT 0,
+    website_posted_date TEXT,
+    website_url TEXT,
+    clerk_notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_ord_tracking_docket ON ordinance_tracking(docket_id);
 `);
+
+// --- Migrations ---
+try { db.prepare("SELECT text_override FROM docket LIMIT 0").get(); }
+catch { db.exec("ALTER TABLE docket ADD COLUMN text_override TEXT"); }
 
 // --- Seed demo data on first run ---
 seedDemoData();
@@ -137,7 +178,43 @@ export function createDocketEntry(params: {
       JSON.stringify(classification.completeness),
       JSON.stringify(params.attachmentFilenames)
     );
-  return result.lastInsertRowid as number;
+  const docketId = result.lastInsertRowid as number;
+
+  // Auto-create ordinance tracking for ordinance items
+  if (classification.item_type === "ordinance_new" || classification.item_type === "ordinance_amendment") {
+    const ef = classification.extracted_fields;
+    const tracking: Record<string, string | number | null> = {};
+
+    // Extract ordinance number: from classifier, or parse from attachment filename (e.g. "O.2271-2026_Adopt_Area.pdf")
+    const ordNum = ef.ordinance_number ?? null;
+    if (ordNum) {
+      tracking.ordinance_number = ordNum;
+    } else {
+      const match = params.attachmentFilenames
+        .map((f) => f.match(/^(O\.\d+-\d{4})/i))
+        .find((m) => m);
+      if (match) tracking.ordinance_number = match[1];
+    }
+
+    // Determine reading stage and populate dates
+    const stage = ef.reading_stage ?? null;
+    if (stage === "first") {
+      // First reading — email date is roughly the introduction date
+      tracking.introduction_date = params.emailDate;
+    } else if (stage === "second") {
+      // Second reading — the hearing is happening at the target meeting
+      tracking.introduction_date = params.emailDate; // Approximate — clerk can refine
+    }
+
+    if (Object.keys(tracking).length > 0) {
+      upsertOrdinanceTracking(docketId, tracking);
+    } else {
+      // Create empty tracking record so it shows up in the ordinances view
+      upsertOrdinanceTracking(docketId, {});
+    }
+  }
+
+  return docketId;
 }
 
 export function getDocketEntries(filters?: {
@@ -198,6 +275,7 @@ export function updateDocketEntry(
     target_meeting_date?: string | null;
     item_type?: string;
     department?: string;
+    text_override?: string | null;
   }
 ): void {
   const sets: string[] = [];
@@ -223,6 +301,10 @@ export function updateDocketEntry(
     sets.push("department = ?");
     values.push(updates.department);
   }
+  if (updates.text_override !== undefined) {
+    sets.push("text_override = ?");
+    values.push(updates.text_override);
+  }
 
   if (sets.length === 0) return;
 
@@ -232,6 +314,37 @@ export function updateDocketEntry(
     ...values,
     id
   );
+}
+
+export function insertDocketHistory(
+  docketId: number,
+  fieldName: string,
+  oldValue: string,
+  newValue: string
+): void {
+  db.prepare(
+    "INSERT INTO docket_history (docket_id, field_name, old_value, new_value) VALUES (?, ?, ?, ?)"
+  ).run(docketId, fieldName, oldValue, newValue);
+}
+
+export function getDocketHistory(docketId: number): {
+  id: number;
+  docket_id: number;
+  field_name: string;
+  old_value: string;
+  new_value: string;
+  changed_at: string;
+}[] {
+  return db
+    .prepare("SELECT * FROM docket_history WHERE docket_id = ? ORDER BY changed_at DESC")
+    .all(docketId) as {
+    id: number;
+    docket_id: number;
+    field_name: string;
+    old_value: string;
+    new_value: string;
+    changed_at: string;
+  }[];
 }
 
 export function getDocketStats(): {
@@ -449,6 +562,104 @@ export function getMeetingsNeedingMinutes(): Meeting[] {
           AND d.status IN ('accepted', 'on_agenda')
       )
   `).all(today) as Meeting[];
+}
+
+// --- Ordinance Lifecycle Helpers ---
+
+/** Find the next regular meeting that is at least `minDaysAfter` days after `afterDate`. */
+export function getNextRegularMeetingAfter(afterDate: string, minDaysAfter = 10): Meeting | null {
+  const earliest = new Date(afterDate + "T12:00:00");
+  earliest.setDate(earliest.getDate() + minDaysAfter);
+  const earliestStr = earliest.toISOString().split("T")[0];
+
+  // Ensure meetings are generated far enough ahead
+  ensureMeetingsGenerated();
+
+  const row = db.prepare(
+    `SELECT * FROM meetings WHERE meeting_type = 'regular' AND meeting_date >= ? ORDER BY meeting_date ASC LIMIT 1`
+  ).get(earliestStr) as Meeting | undefined;
+  return row ?? null;
+}
+
+// --- Ordinance Tracking ---
+
+export function getOrdinanceTracking(docketId: number): OrdinanceTracking | null {
+  const row = db.prepare("SELECT * FROM ordinance_tracking WHERE docket_id = ?").get(docketId) as OrdinanceTracking | undefined;
+  return row ?? null;
+}
+
+export function upsertOrdinanceTracking(
+  docketId: number,
+  updates: Partial<Omit<OrdinanceTracking, "id" | "docket_id" | "created_at" | "updated_at">>
+): void {
+  const existing = getOrdinanceTracking(docketId);
+  if (!existing) {
+    // Insert with provided fields
+    const cols = ["docket_id"];
+    const placeholders = ["?"];
+    const vals: (string | number | null)[] = [docketId];
+    for (const [k, v] of Object.entries(updates)) {
+      if (v !== undefined) {
+        cols.push(k);
+        placeholders.push("?");
+        vals.push(v as string | number | null);
+      }
+    }
+    db.prepare(`INSERT INTO ordinance_tracking (${cols.join(", ")}) VALUES (${placeholders.join(", ")})`).run(...vals);
+  } else {
+    // Update existing
+    const sets: string[] = [];
+    const vals: (string | number | null)[] = [];
+    for (const [k, v] of Object.entries(updates)) {
+      if (v !== undefined) {
+        sets.push(`${k} = ?`);
+        vals.push(v as string | number | null);
+      }
+    }
+    if (sets.length === 0) return;
+    sets.push("updated_at = datetime('now')");
+    db.prepare(`UPDATE ordinance_tracking SET ${sets.join(", ")} WHERE docket_id = ?`).run(...vals, docketId);
+  }
+}
+
+export function getAllOrdinancesWithTracking(): (DocketEntry & { tracking: OrdinanceTracking | null })[] {
+  const ordinances = db.prepare(`
+    SELECT * FROM docket
+    WHERE item_type IN ('ordinance_new', 'ordinance_amendment')
+    ORDER BY created_at DESC
+  `).all() as DocketEntry[];
+
+  return ordinances.map((ord) => {
+    let tracking = getOrdinanceTracking(ord.id);
+
+    // Lazy-create tracking for existing ordinances that don't have it yet
+    if (!tracking) {
+      const autoFields: Record<string, string | number | null> = {};
+
+      // Try to parse ordinance number from attachment filenames
+      try {
+        const files = JSON.parse(ord.attachment_filenames) as string[];
+        const match = files.map((f) => f.match(/^(O\.\d+-\d{4})/i)).find((m) => m);
+        if (match) autoFields.ordinance_number = match[1];
+      } catch { /* ignore */ }
+
+      // Try to get ordinance number from extracted_fields
+      try {
+        const ef = JSON.parse(ord.extracted_fields);
+        if (ef.ordinance_number) autoFields.ordinance_number = ef.ordinance_number;
+      } catch { /* ignore */ }
+
+      // Use target_meeting_date as introduction date if available
+      if (ord.target_meeting_date) {
+        autoFields.introduction_date = ord.target_meeting_date;
+      }
+
+      upsertOrdinanceTracking(ord.id, autoFields);
+      tracking = getOrdinanceTracking(ord.id);
+    }
+
+    return { ...ord, tracking };
+  });
 }
 
 // --- Seed demo data ---

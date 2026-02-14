@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMeeting, getAgendaItemsForMeeting, updateMeeting } from "@/lib/db";
-import { fetchTranscriptData, fetchWhisperTranscript, generateMinutes, type TranscriptSource } from "@/lib/minutes-generator";
+import { fetchTranscriptData, fetchWhisperTranscript, generateMinutes, analyzeOrdinanceOutcomes, type TranscriptSource } from "@/lib/minutes-generator";
 
 export async function POST(
   request: NextRequest,
@@ -61,6 +61,9 @@ export async function POST(
 
     // Save the generated minutes
     updateMeeting(meetingId, { minutes });
+
+    // Analyze transcript for ordinance outcomes and update tracking
+    await analyzeOrdinanceOutcomes(meeting.meeting_type, meeting.meeting_date, transcriptData.transcript, agendaItems);
 
     const updated = getMeeting(meetingId);
     return NextResponse.json(updated);

@@ -34,7 +34,9 @@ RESPOND WITH A JSON OBJECT (no markdown, no backticks, just raw JSON) with these
     "escrow_amount": string|null,
     "recommended_action": string|null,
     "dollar_amounts": string[],
-    "line_items": [{"payee": string, "amount": string, "description": string|null}] | null
+    "line_items": [{"payee": string, "amount": string, "description": string|null}] | null,
+    "ordinance_number": string|null,
+    "reading_stage": "first"|"second"|null
   },
   "completeness": {
     "needs_cfo_certification": boolean,
@@ -103,6 +105,14 @@ DISBURSEMENT REPORT GUIDANCE:
 - dollar_amounts should contain ONLY the grand total
 - line_items is only used for disbursement reports; set it to null for all other item types
 
+ORDINANCE GUIDANCE:
+- For ordinance_new and ordinance_amendment items, extract the ordinance number if present (e.g. "O.2270-2026" from the subject, body, or attachment filename)
+- Set reading_stage to "first" if this is being submitted for introduction/first reading, or "second" if it's coming back for public hearing/second reading/adoption
+- Clues for first reading: "for introduction", "first reading", "proposed ordinance", no mention of prior passage
+- Clues for second reading: "second reading", "public hearing", "final passage", "passed first reading on [date]", "adopted on first reading"
+- If unclear, set reading_stage to null
+- ordinance_number and reading_stage are ONLY used for ordinance types; set both to null for all other item types
+
 COMPLETENESS GUIDANCE:
 - needs_cfo_certification: true if any money is being spent, refunded, or authorized
 - needs_attorney_review: true if it involves contracts, ordinances, redevelopment, settlements, or legal authority
@@ -162,6 +172,8 @@ function safeParseResult(raw: unknown): ClassificationResult {
               ...(typeof li.description === "string" ? { description: li.description } : {}),
             }))
         : undefined,
+      ordinance_number: typeof ef.ordinance_number === "string" ? ef.ordinance_number : undefined,
+      reading_stage: (ef.reading_stage === "first" || ef.reading_stage === "second") ? ef.reading_stage : undefined,
     },
     completeness: {
       needs_cfo_certification: typeof comp.needs_cfo_certification === "boolean" ? comp.needs_cfo_certification : false,

@@ -28,7 +28,7 @@ function parseShowDate(eventDate: string): string {
   return eventDate.split("T")[0];
 }
 
-export async function syncVideosFromEdisonTV(): Promise<{
+export async function syncVideosFromCablecast(): Promise<{
   matched: number;
   already_linked: number;
   unmatched: number;

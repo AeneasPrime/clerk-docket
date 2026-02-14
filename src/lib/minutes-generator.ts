@@ -1,11 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import { execSync } from "child_process";
+import { exec } from "child_process";
+import { promisify } from "util";
+const execAsync = promisify(exec);
 import { existsSync, unlinkSync, statSync, createReadStream } from "fs";
 import path from "path";
 import os from "os";
 import type { DocketEntry } from "@/types";
-import { getMeeting, getAgendaItemsForMeeting, updateMeeting, getMeetingsNeedingMinutes } from "./db";
+import { getMeeting, getAgendaItemsForMeeting, updateMeeting, getMeetingsNeedingMinutes, getOrdinanceTracking, upsertOrdinanceTracking, getNextRegularMeetingAfter } from "./db";
 
 let _anthropic: Anthropic | null = null;
 function getClient(): Anthropic {
@@ -123,9 +125,9 @@ export async function fetchWhisperTranscript(videoUrl: string): Promise<Transcri
 
   try {
     console.log(`Downloading and extracting audio from ${vodUrl}...`);
-    execSync(
+    await execAsync(
       `ffmpeg -i "${vodUrl}" -vn -acodec libmp3lame -ar 16000 -ac 1 -q:a 6 "${audioPath}" -y 2>/dev/null`,
-      { timeout: 600000, stdio: "pipe" }
+      { timeout: 600000 }
     );
 
     const stats = statSync(audioPath);
@@ -146,7 +148,7 @@ export async function fetchWhisperTranscript(videoUrl: string): Promise<Transcri
       response_format: "verbose_json",
       language: "en",
       // Vocabulary hints for proper name recognition
-      prompt: "Edison Township Municipal Council meeting. Council members: Brescher, Coyle, Dima, Kentos, Patel, Patil, Shmuel. Staff: Clerk Russomanno, Deputy Clerk McCray, Attorney Rainone, Business Administrator Alves-Viveiros, CFO Vallejo, Director of Finance DeRoberts, Sergeant Mieczkowski, Fire Chief Toth.",
+      prompt: "Edison Township Municipal Council meeting. Council members: Brescher, Coyle, Dima, Harris, Kentos, Patel, Patil, Shmuel. Staff: Clerk Russomanno, Deputy Clerk McCray, Attorney Rainone, Business Administrator Alves-Viveiros, CFO Vallejo, Director of Finance DeRoberts, Sergeant Mieczkowski, Fire Chief Toth.",
     });
 
     // Format segments with timestamps for Claude
@@ -194,7 +196,7 @@ You will be given a transcript, chapter markers, and agenda items. Produce minut
 TRANSCRIPT NOTE: ${transcriptNote}
 
 KNOWN NAMES — use these EXACT spellings (the transcript WILL misspell them):
-- Council Members (2026): Brescher, Coyle (Council President), Dima, Kentos (Council Vice President), Patel, Patil, Shmuel
+- Council Members (2026): Brescher, Coyle, Dima, Harris (Council Vice President), Kentos, Patel (Council President), Patel, Patil, Shmuel
 - Staff: Township Clerk Russomanno, Deputy Clerk McCray, Township Attorney Rainone, Business Administrator Alves-Viveiros, CFO Vallejo, Director of Finance DeRoberts, Police Sgt. Mieczkowski, Fire Chief Toth, Cameraman Bhatty
 - When referring to staff in discussion: Mr. Rainone, Ms. Alves-Viveiros, Mr. DeRoberts, etc.
 
@@ -583,12 +585,221 @@ export function maybeAutoGenerateMinutes(meetingId: number): void {
 
       updateMeeting(meetingId, { minutes });
       console.log(`[auto-minutes] Minutes generated for meeting ${meetingId}`);
+
+      // Analyze transcript for ordinance outcomes and update tracking
+      await analyzeOrdinanceOutcomes(meeting.meeting_type, meeting.meeting_date, transcriptData.transcript, agendaItems);
     } catch (err) {
       console.error(`[auto-minutes] Failed for meeting ${meetingId}:`, err instanceof Error ? err.message : err);
     } finally {
       generatingSet.delete(meetingId);
     }
   })();
+}
+
+// --- Ordinance outcome analysis ---
+
+interface OrdinanceOutcome {
+  docket_id: number;
+  outcome: "introduced" | "hearing_held" | "adopted" | "failed" | "tabled" | "amended" | "not_mentioned";
+  vote_result?: string;  // e.g. "7-0", "6-1"
+  hearing_date_set?: string; // next hearing date if mentioned
+  notes?: string;
+}
+
+/**
+ * After minutes are generated, analyze them to determine what happened
+ * to each ordinance on the agenda, then update tracking accordingly.
+ */
+export async function analyzeOrdinanceOutcomes(
+  meetingType: string,
+  meetingDate: string,
+  transcript: string,
+  agendaItems: DocketEntry[]
+): Promise<void> {
+  const ordinances = agendaItems.filter(
+    (item) => item.item_type === "ordinance_new" || item.item_type === "ordinance_amendment"
+  );
+
+  if (ordinances.length === 0) return;
+
+  const ordinanceList = ordinances.map((o) => {
+    const fields = safeParseJson(o.extracted_fields);
+    return {
+      docket_id: o.id,
+      ordinance_number: fields?.ordinance_number ?? null,
+      summary: o.summary ?? o.email_subject,
+    };
+  }).map((o) =>
+    `- docket_id=${o.docket_id}, ordinance_number=${o.ordinance_number ?? "unknown"}, summary: ${o.summary}`
+  ).join("\n");
+
+  const prompt = `Analyze this Edison Township Council meeting transcript to determine what happened to each ordinance.
+
+CONTEXT: Edison Township, NJ (Faulkner Act Mayor-Council). The transcript is from a speech-to-text system — names may be misspelled.
+
+MEETING TYPE: ${meetingType === "work_session" ? "Work Session (ordinances are discussed/presented, may be read by title for first reading)" : "Regular Meeting (formal first readings with roll call votes, public hearings, and adoption votes)"}
+MEETING DATE: ${meetingDate}
+
+ORDINANCES ON AGENDA:
+${ordinanceList}
+
+TRANSCRIPT:
+${transcript}
+
+For each ordinance, determine the outcome by listening for:
+- Motions ("I move to...", "motion to introduce", "motion to adopt")
+- Seconds ("seconded by...")
+- Roll call votes (individual "aye"/"nay" responses from council members)
+- Procedural language ("passed on first reading", "public hearing is now open", "ordinance is adopted", "tabled", "laid on the table", "sent back to committee")
+- The presiding officer's declarations ("the ordinance is adopted", "motion carries")
+
+Respond with a JSON array:
+[
+  {
+    "docket_id": <number>,
+    "outcome": "<one of: introduced, hearing_held, adopted, failed, tabled, amended, not_mentioned>",
+    "vote_result": "<e.g. '7-0' or '6-1' — count ayes vs nays from roll call, or null if no vote taken>",
+    "notes": "<brief note, e.g. 'Passed first reading 7-0' or 'Public hearing held, 2 speakers, adopted 6-1 (Patil nay)' or 'Tabled at request of administration'>"
+  }
+]
+
+Outcome meanings:
+- "introduced": Ordinance was read by title and/or passed first reading vote
+- "hearing_held": Public hearing was opened and closed but NOT adopted in this meeting
+- "adopted": Ordinance passed final adoption vote (may include hearing in same meeting)
+- "failed": Vote failed or ordinance was defeated
+- "tabled": Ordinance was tabled / postponed / laid on table / sent back to committee
+- "amended": Ordinance was substantially amended during hearing (process may restart)
+- "not_mentioned": Cannot find this ordinance discussed in the transcript
+
+IMPORTANT:
+- At regular meetings, an ordinance may have BOTH a public hearing and adoption vote. If adopted, use "adopted".
+- At work sessions, ordinances are typically discussed but not formally voted on. If only discussed with no motion/vote, use "introduced" since the work session IS the introduction/first reading in Edison's process.
+- Count actual roll call responses for vote_result, don't guess.
+
+Return ONLY the JSON array, no other text.`;
+
+  try {
+    const response = await getClient().messages.create({
+      model: "claude-sonnet-4-5-20250929",
+      max_tokens: 2000,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const text = response.content.find((b) => b.type === "text");
+    if (!text || text.type !== "text") return;
+
+    // Extract JSON from response (may be wrapped in markdown code fences)
+    const jsonMatch = text.text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return;
+
+    const outcomes: OrdinanceOutcome[] = JSON.parse(jsonMatch[0]);
+
+    for (const outcome of outcomes) {
+      if (outcome.outcome === "not_mentioned") continue;
+
+      const tracking = getOrdinanceTracking(outcome.docket_id);
+      const updates: Record<string, string | number | null> = {};
+
+      switch (outcome.outcome) {
+        case "introduced":
+          if (!tracking?.introduction_date) {
+            updates.introduction_date = meetingDate;
+            const mtgLabel = meetingType === "work_session" ? "Work Session" : "Regular Meeting";
+            updates.introduction_meeting = `${mtgLabel} ${new Date(meetingDate + "T12:00:00").toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" })}`;
+          }
+          if (outcome.vote_result && !tracking?.adoption_vote) {
+            // Store the introduction vote in hearing_notes for reference
+            const existingNotes = tracking?.hearing_notes || "";
+            const introNote = `First reading vote: ${outcome.vote_result}`;
+            if (!existingNotes.includes(introNote)) {
+              updates.hearing_notes = existingNotes ? `${existingNotes}\n${introNote}` : introNote;
+            }
+          }
+          // Auto-suggest hearing date if not set
+          if (!tracking?.hearing_date) {
+            const nextRegular = getNextRegularMeetingAfter(meetingDate, 10);
+            if (nextRegular) {
+              updates.hearing_date = nextRegular.meeting_date;
+            }
+          }
+          break;
+
+        case "hearing_held":
+          if (!tracking?.hearing_date) {
+            updates.hearing_date = meetingDate;
+          }
+          if (outcome.notes) {
+            const existingNotes = tracking?.hearing_notes || "";
+            if (!existingNotes.includes(outcome.notes)) {
+              updates.hearing_notes = existingNotes ? `${existingNotes}\n${outcome.notes}` : outcome.notes;
+            }
+          }
+          break;
+
+        case "adopted":
+          // Mark hearing if not already set
+          if (!tracking?.hearing_date) {
+            updates.hearing_date = meetingDate;
+          }
+          if (!tracking?.adoption_date) {
+            updates.adoption_date = meetingDate;
+            if (outcome.vote_result) {
+              updates.adoption_vote = outcome.vote_result;
+            }
+            // Auto-calculate effective date
+            if (!tracking?.is_emergency) {
+              const d = new Date(meetingDate + "T12:00:00");
+              d.setDate(d.getDate() + 20);
+              updates.effective_date = d.toISOString().split("T")[0];
+            }
+          }
+          break;
+
+        case "failed":
+          if (!tracking?.adoption_failed) {
+            updates.adoption_failed = 1;
+            updates.adoption_date = meetingDate;
+            if (outcome.vote_result) {
+              updates.adoption_vote = outcome.vote_result;
+            }
+          }
+          break;
+
+        case "tabled":
+          if (outcome.notes) {
+            const existingNotes = tracking?.clerk_notes || "";
+            const tableNote = `Tabled on ${meetingDate}: ${outcome.notes}`;
+            if (!existingNotes.includes("Tabled")) {
+              updates.clerk_notes = existingNotes ? `${existingNotes}\n${tableNote}` : tableNote;
+            }
+          }
+          break;
+
+        case "amended":
+          updates.hearing_amended = 1;
+          if (outcome.notes) {
+            const existingNotes = tracking?.hearing_notes || "";
+            if (!existingNotes.includes("amended")) {
+              updates.hearing_notes = existingNotes ? `${existingNotes}\nSubstantially amended — process restarts` : "Substantially amended — process restarts";
+            }
+          }
+          break;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        upsertOrdinanceTracking(outcome.docket_id, updates);
+        console.log(`[ordinance-tracking] Updated docket ${outcome.docket_id}: ${outcome.outcome}${outcome.vote_result ? ` (${outcome.vote_result})` : ""}`);
+      }
+    }
+  } catch (err) {
+    console.error("[ordinance-tracking] Failed to analyze outcomes:", err instanceof Error ? err.message : err);
+  }
+}
+
+function safeParseJson(s: string | null | undefined): Record<string, unknown> | null {
+  if (!s) return null;
+  try { return JSON.parse(s); } catch { return null; }
 }
 
 /**

@@ -282,7 +282,7 @@ export function generateMinutesPDF(options: MinutesPDFOptions): PDFKit.PDFDocume
 
   y += 4;
   doc.font(FONT_REG).fontSize(FONT_SIZE);
-  doc.text(nameLinesParsed[0] || "Joseph Coyle", sigLeftX, y, { width: sigLineWidth });
+  doc.text(nameLinesParsed[0] || "Sam Joshi", sigLeftX, y, { width: sigLineWidth });
   doc.text(nameLinesParsed[1] || "Cheryl Russomanno, RMC", sigRightX, y, { width: sigLineWidth });
 
   y += LINE_HEIGHT;

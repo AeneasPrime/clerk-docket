@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 // --- Types ---
 
@@ -22,6 +22,7 @@ interface DocketEntry {
   status: string;
   notes: string;
   target_meeting_date: string | null;
+  text_override: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -72,6 +73,49 @@ interface ThreadMessage {
   snippet: string;
   bodyText: string;
 }
+
+interface TextOverride {
+  whereas?: string[];
+  resolved?: string;
+  further_resolved?: string[];
+  ordinance_title?: string;
+  summary?: string;
+}
+
+interface DocketHistoryEntry {
+  id: number;
+  docket_id: number;
+  field_name: string;
+  old_value: string;
+  new_value: string;
+  changed_at: string;
+}
+
+interface OrdinanceTracking {
+  id: number;
+  docket_id: number;
+  ordinance_number: string | null;
+  introduction_date: string | null;
+  introduction_meeting: string | null;
+  pub_intro_date: string | null;
+  pub_intro_newspaper: string | null;
+  bulletin_posted_date: string | null;
+  hearing_date: string | null;
+  hearing_amended: number;
+  hearing_notes: string;
+  adoption_date: string | null;
+  adoption_vote: string | null;
+  adoption_failed: number;
+  pub_final_date: string | null;
+  pub_final_newspaper: string | null;
+  effective_date: string | null;
+  is_emergency: number;
+  website_posted_date: string | null;
+  website_url: string | null;
+  clerk_notes: string;
+}
+
+type OrdinanceWithTracking = DocketEntry & { tracking: OrdinanceTracking | null };
 
 // --- Constants ---
 
@@ -538,16 +582,17 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
     { id: "review", label: "Review", count: stats?.new_count ?? 0 },
     { id: "agenda", label: "Agenda", count: stats?.accepted ?? 0 },
     { id: "live_agenda", label: "Live Agenda", count: stats?.accepted ?? 0 },
+    { id: "ordinances", label: "Ordinances", count: 0 },
     { id: "all", label: "All Items", count: stats?.total ?? 0 },
   ];
 
   return (
     <aside className="flex w-56 shrink-0 flex-col" style={{ background: "#1F2023" }}>
       {/* Logo */}
-      <div className="px-5 py-5">
+      <a href="/dashboard" className="block px-5 py-5 transition-opacity hover:opacity-80">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-white">Office of the Clerk</p>
         <p className="text-[10px] tracking-[0.2em]" style={{ color: "#6B6F76" }}>Edison Township</p>
-      </div>
+      </a>
 
       {/* Nav */}
       <nav className="mt-2 flex-1 overflow-y-auto px-3 pb-3">
@@ -593,7 +638,7 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
         {deptsOpen && (() => {
           const countMap: Record<string, number> = {};
           if (stats) {
-            for (const d of stats.by_department) countMap[d.department] = d.count;
+            for (const d of stats.by_department ?? []) countMap[d.department] = d.count;
           }
           return DEPARTMENTS.map((dept) => {
             const count = countMap[dept.name] ?? 0;
@@ -1061,7 +1106,7 @@ function generateClause(
 
     default:
       return {
-        whereas: [summary ?? "a matter has been presented to the Municipal Council for consideration and action"],
+        whereas: [summary ?? "a matter has been presented to the Township Council for consideration and action"],
         resolved: summary ?? "the recommended action be and is hereby approved",
         cfoNote: false,
       };
@@ -1077,9 +1122,9 @@ function generateOrdinanceTitle(
   const project = typeof fields.project_name === "string" ? fields.project_name : null;
 
   if (itemType === "ordinance_amendment") {
-    return `AN ORDINANCE OF THE TOWNSHIP OF EDISON, IN THE COUNTY OF MIDDLESEX, STATE OF NEW JERSEY, AMENDING ${project ? `THE REVISED GENERAL ORDINANCES OF THE TOWNSHIP OF EDISON WITH RESPECT TO ${project.toUpperCase()}` : (summary?.toUpperCase() ?? "THE REVISED GENERAL ORDINANCES")}${citation ? ` (${citation.toUpperCase()})` : ""}`;
+    return `AN ORDINANCE TO AMEND AND SUPPLEMENT THE REVISED GENERAL ORDINANCES OF THE TOWNSHIP OF EDISON, COUNTY OF MIDDLESEX, STATE OF NEW JERSEY, ${project ? `AMENDING ${project.toUpperCase()}` : (summary?.toUpperCase() ?? "AMENDING THE REVISED GENERAL ORDINANCES")}${citation ? ` (${citation.toUpperCase()})` : ""}`;
   }
-  return `AN ORDINANCE OF THE TOWNSHIP OF EDISON, IN THE COUNTY OF MIDDLESEX, STATE OF NEW JERSEY, ${project ? `ESTABLISHING ${project.toUpperCase()}` : (summary?.toUpperCase() ?? "PROVIDING FOR THE GENERAL WELFARE")}${citation ? ` (${citation.toUpperCase()})` : ""}`;
+  return `AN ORDINANCE OF THE TOWNSHIP OF EDISON, COUNTY OF MIDDLESEX, STATE OF NEW JERSEY, ${project ? `ESTABLISHING ${project.toUpperCase()}` : (summary?.toUpperCase() ?? "PROVIDING FOR THE GENERAL WELFARE")}${citation ? ` (${citation.toUpperCase()})` : ""}`;
 }
 
 // --- Live Agenda ---
@@ -1236,32 +1281,693 @@ function TrailSidebar({
   );
 }
 
+function boldLegalPrefixes(text: string): string {
+  const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return esc
+    .replace(/^(WHEREAS,)/i, "<strong>$1</strong>")
+    .replace(/^(NOW, THEREFORE, BE IT RESOLVED)/i, "<strong>$1</strong>")
+    .replace(/^(BE IT FURTHER RESOLVED)/i, "<strong>$1</strong>");
+}
+
+function InlineEdit({
+  value,
+  onSave,
+  className,
+}: {
+  value: string;
+  onSave: (newValue: string) => void;
+  className?: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const savedRef = useRef(value);
+
+  useEffect(() => {
+    savedRef.current = value;
+    if (ref.current) ref.current.innerHTML = boldLegalPrefixes(value);
+  }, [value]);
+
+  return (
+    <span
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      onFocus={() => {
+        savedRef.current = ref.current?.textContent ?? value;
+      }}
+      onBlur={() => {
+        const text = ref.current?.textContent?.trim() ?? "";
+        if (text && text !== savedRef.current) {
+          savedRef.current = text;
+          onSave(text);
+        }
+        // Re-apply bold formatting after editing
+        if (ref.current) ref.current.innerHTML = boldLegalPrefixes(ref.current.textContent ?? "");
+      }}
+      className={`cursor-text outline-none ${className ?? ""}`}
+      dangerouslySetInnerHTML={{ __html: boldLegalPrefixes(value) }}
+    />
+  );
+}
+
+function HistorySidebar({
+  itemId,
+  subject,
+  onClose,
+  onRevert,
+}: {
+  itemId: number;
+  subject: string;
+  onClose: () => void;
+  onRevert: (field: string) => void;
+}) {
+  const [history, setHistory] = useState<DocketHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/docket-item?id=${itemId}&history=true`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        setHistory(data.history ?? []);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [itemId]);
+
+  const fieldLabel = (f: string) => {
+    const labels: Record<string, string> = { whereas: "WHEREAS clauses", resolved: "RESOLVED text", ordinance_title: "Ordinance title", summary: "Summary" };
+    return labels[f] ?? f;
+  };
+
+  const formatVal = (raw: string) => {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed === null) return "(auto-generated)";
+      if (Array.isArray(parsed)) return parsed.join("; ");
+      return String(parsed);
+    } catch { return raw; }
+  };
+
+  return (
+    <div className="animate-slide-in no-print fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-slate-200 bg-white shadow-2xl">
+      <div className="flex items-start gap-3 border-b border-slate-200/60 p-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Edit History</p>
+          <h2 className="mt-1 text-[14px] font-semibold leading-snug text-slate-900">{subject}</h2>
+        </div>
+        <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
+          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="h-5 w-5 animate-spin rounded-full" style={{ borderWidth: 2, borderStyle: "solid", borderRightColor: "#E5E5E8", borderBottomColor: "#E5E5E8", borderLeftColor: "#E5E5E8", borderTopColor: "#5E6AD2" }} />
+          </div>
+        ) : history.length === 0 ? (
+          <p className="py-12 text-center text-sm italic text-slate-400">No edit history yet</p>
+        ) : (
+          <div className="space-y-4">
+            {history.map((h) => (
+              <div key={h.id} className="rounded-lg border border-slate-200/60 p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    {fieldLabel(h.field_name)}
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {new Date(h.changed_at + "Z").toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                  </span>
+                </div>
+                <div className="mb-1 text-[11px] text-slate-400">Previous:</div>
+                <p className="mb-2 rounded bg-red-50/50 p-2 text-[12px] leading-relaxed text-slate-600 line-through">{formatVal(h.old_value)}</p>
+                <div className="mb-1 text-[11px] text-slate-400">Changed to:</div>
+                <p className="rounded bg-green-50/50 p-2 text-[12px] leading-relaxed text-slate-700">{formatVal(h.new_value)}</p>
+                {h.new_value !== "null" && (
+                  <button
+                    onClick={() => onRevert(h.field_name)}
+                    className="mt-2 text-[11px] text-indigo-500 hover:text-indigo-700"
+                  >
+                    Revert to auto-generated
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Ordinances View ---
+
+const ORDINANCE_STAGES = [
+  { key: "introduction", label: "Introduction", num: "1" },
+  { key: "pub_intro", label: "Publication", num: "2" },
+  { key: "bulletin", label: "Bulletin Board", num: "3" },
+  { key: "hearing", label: "Public Hearing", num: "4" },
+  { key: "adoption", label: "Adoption", num: "5" },
+  { key: "pub_final", label: "Final Publication", num: "6" },
+  { key: "effective", label: "Effective", num: "7" },
+  { key: "website", label: "Website", num: "8" },
+] as const;
+
+function getOrdStage(t: OrdinanceTracking | null): { label: string; color: string; idx: number } {
+  if (!t) return { label: "Draft", color: "#9CA0AB", idx: -1 };
+  if (t.adoption_failed) return { label: "Failed", color: "#F2555A", idx: -1 };
+  if (t.effective_date && new Date(t.effective_date + "T23:59:59") <= new Date()) return { label: "In Effect", color: "#16A34A", idx: 7 };
+  if (t.website_posted_date) return { label: "In Effect", color: "#16A34A", idx: 8 };
+  if (t.pub_final_date) return { label: "Awaiting Effective", color: "#26B5CE", idx: 6 };
+  if (t.adoption_date) return { label: "Adopted", color: "#26B5CE", idx: 5 };
+  if (t.hearing_date && !t.adoption_date) {
+    if (t.hearing_amended) return { label: "Amended — Reset", color: "#E59500", idx: 4 };
+    return { label: "Public Hearing", color: "#E59500", idx: 4 };
+  }
+  if (t.bulletin_posted_date) return { label: "Posted", color: "#5E6AD2", idx: 3 };
+  if (t.pub_intro_date) return { label: "Published", color: "#5E6AD2", idx: 2 };
+  if (t.introduction_date) return { label: "Introduced", color: "#5E6AD2", idx: 1 };
+  return { label: "Draft", color: "#9CA0AB", idx: 0 };
+}
+
+function daysRelative(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const target = new Date(dateStr + "T12:00:00");
+  const now = new Date();
+  now.setHours(12, 0, 0, 0);
+  const diff = Math.round((target.getTime() - now.getTime()) / 86400000);
+  if (diff < -1) return `${Math.abs(diff)}d ago`;
+  if (diff === -1) return "yesterday";
+  if (diff === 0) return "today";
+  if (diff === 1) return "tomorrow";
+  return `in ${diff}d`;
+}
+
+function fmtDate(d: string | null): string {
+  if (!d) return "—";
+  try {
+    return new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  } catch { return d; }
+}
+
+function OrdinancesView({ onSelect }: { onSelect: (id: number) => void }) {
+  const [ordinances, setOrdinances] = useState<OrdinanceWithTracking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const fetchOrdinances = useCallback(async () => {
+    try {
+      const r = await fetch("/api/ordinances");
+      const d = await r.json();
+      setOrdinances(d.ordinances ?? []);
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchOrdinances(); }, [fetchOrdinances]);
+
+  const saveTracking = async (docketId: number, updates: Record<string, string | number | null>) => {
+    await fetch(`/api/ordinances/tracking?id=${docketId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    fetchOrdinances();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="h-5 w-5 animate-spin rounded-full" style={{ borderWidth: 2, borderStyle: "solid", borderRightColor: "#E5E5E8", borderBottomColor: "#E5E5E8", borderLeftColor: "#E5E5E8", borderTopColor: "#5E6AD2" }} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto" style={{ background: "#F8F8F9" }}>
+      {/* Header */}
+      <div className="sticky top-0 z-10 border-b bg-white/90 px-6 py-3 backdrop-blur-sm" style={{ borderColor: "#E5E5E8" }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-[14px] font-semibold" style={{ color: "#1D2024" }}>Ordinances</h2>
+            <p className="mt-0.5 text-[11px]" style={{ color: "#9CA0AB" }}>
+              NJ lifecycle tracking — NJSA 40:49-2, 40:69A-181
+            </p>
+          </div>
+          <span className="tabular-nums text-[12px]" style={{ color: "#9CA0AB" }}>{ordinances.length} total</span>
+        </div>
+      </div>
+
+      {ordinances.length === 0 ? (
+        <div className="flex flex-col items-center py-20">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "#F0F0F2" }}>
+            <span className="text-[14px]" style={{ color: "#9CA0AB" }}>§</span>
+          </div>
+          <p className="text-[13px] font-medium" style={{ color: "#6B6F76" }}>No ordinances yet</p>
+          <p className="mt-1 text-[11px]" style={{ color: "#9CA0AB" }}>Ordinances will appear here when classified from inbox</p>
+        </div>
+      ) : (
+        <div className="mx-auto max-w-[900px] space-y-3 px-6 py-5">
+          {ordinances.map((ord) => {
+            const stage = getOrdStage(ord.tracking);
+            const meta = ord.item_type ? TYPE_META[ord.item_type] : null;
+            const isOpen = expandedId === ord.id;
+
+            return (
+              <div key={ord.id} className="rounded-lg bg-white" style={{ border: "1px solid #E5E5E8" }}>
+                {/* Card header */}
+                <div className="flex items-start gap-3.5 px-5 py-4">
+                  <span
+                    className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded text-[10px] font-bold"
+                    style={{ background: "#EEF0FF", color: "#5E6AD2" }}
+                  >
+                    {meta?.short ?? "ORD"}
+                  </span>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {ord.tracking?.ordinance_number && (
+                            <span className="text-[12px] font-semibold tabular-nums" style={{ color: "#5E6AD2" }}>
+                              {ord.tracking.ordinance_number}
+                            </span>
+                          )}
+                          <h3
+                            className="cursor-pointer truncate text-[13px] font-medium hover:underline"
+                            style={{ color: "#1D2024" }}
+                            onClick={() => onSelect(ord.id)}
+                            title={ord.summary || ord.email_subject}
+                          >
+                            {ord.summary || ord.email_subject}
+                          </h3>
+                        </div>
+                        <div className="mt-1 flex items-center gap-2 text-[11px]" style={{ color: "#9CA0AB" }}>
+                          {ord.department && <span>{ord.department}</span>}
+                          {ord.department && <span>·</span>}
+                          <span>{shortDate(ord.created_at)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span
+                          className="rounded px-2 py-1 text-[11px] font-medium"
+                          style={{ background: `${stage.color}18`, color: stage.color }}
+                        >
+                          {stage.label}
+                        </span>
+                        <button
+                          onClick={() => setExpandedId(isOpen ? null : ord.id)}
+                          className="rounded px-2 py-1 text-[11px] font-medium transition-colors hover:bg-slate-50"
+                          style={{ border: "1px solid #E5E5E8", color: "#6B6F76" }}
+                        >
+                          {isOpen ? "Close" : "Track"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Mini progress bar — collapsed view */}
+                    {!isOpen && ord.tracking && (
+                      <div className="mt-3 flex items-center gap-1">
+                        {ORDINANCE_STAGES.map((s, i) => {
+                          const done = stage.idx > i || (stage.idx === i && stage.label !== "Draft");
+                          const current = stage.idx === i;
+                          return (
+                            <div key={s.key} className="flex items-center gap-1">
+                              <div
+                                className="h-1.5 w-8 rounded-full transition-colors"
+                                style={{
+                                  background: done ? stage.color : current ? `${stage.color}40` : "#E5E5E8",
+                                }}
+                                title={s.label}
+                              />
+                            </div>
+                          );
+                        })}
+                        {/* Key dates inline */}
+                        <div className="ml-3 flex items-center gap-3 text-[10px]" style={{ color: "#9CA0AB" }}>
+                          {ord.tracking?.hearing_date && (
+                            <span>
+                              Hearing {fmtDate(ord.tracking.hearing_date)}{" "}
+                              {new Date(ord.tracking.hearing_date + "T23:59:59") >= new Date() && (
+                                <span style={{ color: "#E59500" }}>({daysRelative(ord.tracking.hearing_date)})</span>
+                              )}
+                            </span>
+                          )}
+                          {ord.tracking?.effective_date && (
+                            <span>
+                              Effective {fmtDate(ord.tracking.effective_date)}{" "}
+                              {new Date(ord.tracking.effective_date + "T23:59:59") >= new Date() && (
+                                <span style={{ color: "#26B5CE" }}>({daysRelative(ord.tracking.effective_date)})</span>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Expanded tracking form */}
+                {isOpen && (
+                  <div className="border-t px-5 py-5" style={{ background: "#FAFAFA", borderColor: "#E5E5E8" }}>
+                    <OrdTrackingForm
+                      ord={ord}
+                      onSave={(updates) => saveTracking(ord.id, updates)}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OrdTrackingForm({
+  ord,
+  onSave,
+}: {
+  ord: OrdinanceWithTracking;
+  onSave: (updates: Record<string, string | number | null>) => void;
+}) {
+  const t = ord.tracking;
+  const [form, setForm] = useState({
+    ordinance_number: t?.ordinance_number ?? "",
+    introduction_date: t?.introduction_date ?? "",
+    introduction_meeting: t?.introduction_meeting ?? "",
+    pub_intro_date: t?.pub_intro_date ?? "",
+    pub_intro_newspaper: t?.pub_intro_newspaper ?? "",
+    bulletin_posted_date: t?.bulletin_posted_date ?? "",
+    hearing_date: t?.hearing_date ?? "",
+    hearing_amended: t?.hearing_amended ?? 0,
+    hearing_notes: t?.hearing_notes ?? "",
+    adoption_date: t?.adoption_date ?? "",
+    adoption_vote: t?.adoption_vote ?? "",
+    adoption_failed: t?.adoption_failed ?? 0,
+    pub_final_date: t?.pub_final_date ?? "",
+    pub_final_newspaper: t?.pub_final_newspaper ?? "",
+    effective_date: t?.effective_date ?? "",
+    is_emergency: t?.is_emergency ?? 0,
+    website_posted_date: t?.website_posted_date ?? "",
+    website_url: t?.website_url ?? "",
+    clerk_notes: t?.clerk_notes ?? "",
+  });
+  const [dirty, setDirty] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const set = (key: string, val: string | number) => {
+    setForm((prev) => ({ ...prev, [key]: val }));
+    setDirty(true);
+    // Debounce auto-save
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      const updates: Record<string, string | number | null> = { [key]: val === "" ? null : val };
+      onSave(updates);
+      setDirty(false);
+    }, 800);
+  };
+
+  // Validate: hearing must be ≥10 days after introduction
+  const introDate = form.introduction_date ? new Date(form.introduction_date + "T12:00:00") : null;
+  const hearingDate = form.hearing_date ? new Date(form.hearing_date + "T12:00:00") : null;
+  const hearingTooSoon = introDate && hearingDate && (hearingDate.getTime() - introDate.getTime()) < 10 * 86400000;
+
+  const fieldStyle = "w-full rounded border px-2.5 py-1.5 text-[12px] outline-none transition-colors focus:border-[#5E6AD2]";
+  const labelStyle = "mb-1 block text-[11px] font-medium";
+
+  return (
+    <div className="space-y-6">
+      {/* Ordinance Number */}
+      <div className="max-w-xs">
+        <label className={labelStyle} style={{ color: "#6B6F76" }}>Ordinance Number</label>
+        <input
+          type="text"
+          value={form.ordinance_number}
+          onChange={(e) => set("ordinance_number", e.target.value)}
+          placeholder="O.2270-2026"
+          className={fieldStyle}
+          style={{ borderColor: "#E5E5E8", color: "#1D2024" }}
+        />
+      </div>
+
+      {/* Stage 1: Introduction */}
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#5E6AD2" }}>1</span>
+          <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Introduction / First Reading</h4>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>Date Introduced</label>
+            <input type="date" value={form.introduction_date} onChange={(e) => set("introduction_date", e.target.value)}
+              className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+          </div>
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>Meeting</label>
+            <input type="text" value={form.introduction_meeting} onChange={(e) => set("introduction_meeting", e.target.value)}
+              placeholder="Regular Meeting 2/11/2026" className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Stage 2: Publication after introduction */}
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#5E6AD2" }}>2</span>
+          <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Publication After Introduction</h4>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>Publication Date</label>
+            <input type="date" value={form.pub_intro_date} onChange={(e) => set("pub_intro_date", e.target.value)}
+              className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+          </div>
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>Newspaper</label>
+            <input type="text" value={form.pub_intro_newspaper} onChange={(e) => set("pub_intro_newspaper", e.target.value)}
+              placeholder="Home News Tribune" className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Stage 3: Bulletin board */}
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#5E6AD2" }}>3</span>
+          <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Bulletin Board Posting</h4>
+        </div>
+        <div className="max-w-xs">
+          <label className={labelStyle} style={{ color: "#6B6F76" }}>Date Posted</label>
+          <input type="date" value={form.bulletin_posted_date} onChange={(e) => set("bulletin_posted_date", e.target.value)}
+            className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+        </div>
+      </div>
+
+      {/* Stage 4: Public hearing */}
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#E59500" }}>4</span>
+          <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Public Hearing / Second Reading</h4>
+          {hearingTooSoon && (
+            <span className="rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "#FEF2F2", color: "#F2555A" }}>
+              Must be ≥10 days after introduction
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>Hearing Date</label>
+            <input type="date" value={form.hearing_date} onChange={(e) => set("hearing_date", e.target.value)}
+              className={fieldStyle} style={{ borderColor: hearingTooSoon ? "#F2555A" : "#E5E5E8", color: "#1D2024" }} />
+            {form.introduction_date && (
+              <p className="mt-1 text-[10px]" style={{ color: "#9CA0AB" }}>
+                Earliest allowed: {fmtDate((() => { const d = new Date(form.introduction_date + "T12:00:00"); d.setDate(d.getDate() + 10); return d.toISOString().split("T")[0]; })())}
+              </p>
+            )}
+          </div>
+          <div className="flex items-end gap-3">
+            <label className="flex cursor-pointer items-center gap-2 pb-1.5">
+              <input type="checkbox" checked={!!form.hearing_amended} onChange={(e) => set("hearing_amended", e.target.checked ? 1 : 0)}
+                className="h-4 w-4 rounded" />
+              <span className="text-[12px]" style={{ color: "#6B6F76" }}>Substantially amended (resets process)</span>
+            </label>
+          </div>
+        </div>
+        <div className="mt-3">
+          <label className={labelStyle} style={{ color: "#6B6F76" }}>Hearing Notes</label>
+          <textarea value={form.hearing_notes} onChange={(e) => set("hearing_notes", e.target.value)}
+            placeholder="Public comments, amendments discussed..." rows={2}
+            className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+        </div>
+      </div>
+
+      {/* Stage 5: Adoption */}
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#26B5CE" }}>5</span>
+          <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Final Passage (Adoption)</h4>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>Adoption Date</label>
+            <input type="date" value={form.adoption_date} onChange={(e) => set("adoption_date", e.target.value)}
+              className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+          </div>
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>Vote Tally</label>
+            <input type="text" value={form.adoption_vote} onChange={(e) => set("adoption_vote", e.target.value)}
+              placeholder="7-0" className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+          </div>
+        </div>
+        <label className="mt-2 flex cursor-pointer items-center gap-2">
+          <input type="checkbox" checked={!!form.adoption_failed} onChange={(e) => set("adoption_failed", e.target.checked ? 1 : 0)}
+            className="h-4 w-4 rounded" />
+          <span className="text-[12px]" style={{ color: "#F2555A" }}>Failed to pass</span>
+        </label>
+      </div>
+
+      {/* Stage 6: Publication after adoption */}
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#26B5CE" }}>6</span>
+          <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Publication After Adoption</h4>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>Publication Date</label>
+            <input type="date" value={form.pub_final_date} onChange={(e) => set("pub_final_date", e.target.value)}
+              className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+          </div>
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>Newspaper</label>
+            <input type="text" value={form.pub_final_newspaper} onChange={(e) => set("pub_final_newspaper", e.target.value)}
+              placeholder="Home News Tribune" className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Stage 7: Effective date */}
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#16A34A" }}>7</span>
+          <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Effective Date</h4>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>Effective Date</label>
+            <input type="date" value={form.effective_date} onChange={(e) => set("effective_date", e.target.value)}
+              className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024", background: form.adoption_date ? "#F8F8F9" : "#fff" }} />
+            {form.adoption_date && (
+              <p className="mt-1 text-[10px]" style={{ color: "#9CA0AB" }}>
+                Auto-calculated: {form.is_emergency ? "Immediate (emergency)" : "20 days after adoption"}
+                {form.effective_date && ` — ${daysRelative(form.effective_date)}`}
+              </p>
+            )}
+          </div>
+          <div className="flex items-end pb-1.5">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input type="checkbox" checked={!!form.is_emergency} onChange={(e) => set("is_emergency", e.target.checked ? 1 : 0)}
+                className="h-4 w-4 rounded" />
+              <span className="text-[12px]" style={{ color: "#6B6F76" }}>Emergency ordinance (requires 2/3 vote)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Stage 8: Website posting */}
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#16A34A" }}>8</span>
+          <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Website Posting</h4>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>Date Posted</label>
+            <input type="date" value={form.website_posted_date} onChange={(e) => set("website_posted_date", e.target.value)}
+              className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+          </div>
+          <div>
+            <label className={labelStyle} style={{ color: "#6B6F76" }}>URL</label>
+            <input type="text" value={form.website_url} onChange={(e) => set("website_url", e.target.value)}
+              placeholder="https://www.edisonnj.org/ordinances/..." className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Clerk notes */}
+      <div>
+        <label className={labelStyle} style={{ color: "#6B6F76" }}>Clerk Notes</label>
+        <textarea value={form.clerk_notes} onChange={(e) => set("clerk_notes", e.target.value)}
+          placeholder="Internal notes, reminders..." rows={2}
+          className={fieldStyle} style={{ borderColor: "#E5E5E8", color: "#1D2024" }} />
+      </div>
+
+      {dirty && (
+        <p className="text-[10px]" style={{ color: "#9CA0AB" }}>Saving...</p>
+      )}
+    </div>
+  );
+}
+
+// --- Live Agenda ---
+
 function LiveAgenda({
   entries,
   onAction,
+  onRefresh,
 }: {
   entries: DocketEntry[];
   onAction: (id: number, status: string) => void;
+  onRefresh: () => void;
 }) {
   const [trailEmailId, setTrailEmailId] = useState<string | null>(null);
   const [trailSubject, setTrailSubject] = useState("");
+  const [historyItemId, setHistoryItemId] = useState<number | null>(null);
+  const [historySubject, setHistorySubject] = useState("");
+  const saveOverride = useCallback(async (itemId: number, field: string, value: string | string[]) => {
+    try {
+      await fetch(`/api/docket-item?id=${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text_override: { [field]: value } }),
+      });
+      onRefresh();
+    } catch (e) { console.error(e); }
+  }, [onRefresh]);
+
+  const revertField = useCallback(async (itemId: number, field: string) => {
+    try {
+      await fetch(`/api/docket-item?id=${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text_override: { [field]: null } }),
+      });
+      onRefresh();
+    } catch (e) { console.error(e); }
+  }, [onRefresh]);
 
   const accepted = useMemo(
     () => entries.filter((e) => e.status === "accepted" || e.status === "on_agenda"),
     [entries]
   );
 
-  const grouped = useMemo(
-    () => AGENDA_SECTIONS
-      .map((s) => ({ ...s, items: accepted.filter((e) => s.types.has(e.item_type ?? "")) }))
-      .filter((g) => g.items.length > 0),
-    [accepted]
-  );
+  // Categorize items for Edison agenda structure
+  const resolutions = useMemo(() => accepted.filter((e) => e.item_type?.startsWith("resolution_")), [accepted]);
+  const ordinances = useMemo(() => accepted.filter((e) => e.item_type?.startsWith("ordinance_")), [accepted]);
+  const discussionItems = useMemo(() => accepted.filter((e) =>
+    e.item_type === "discussion_item" || e.item_type === "informational" || e.item_type === "other"
+  ), [accepted]);
 
   const ws = nextWorkSession();
-  const meetingDate = ws.date.toLocaleDateString("en-US", {
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
-  });
+  const meetingDateFull = ws.date.toLocaleDateString("en-US", {
+    month: "long", day: "numeric", year: "numeric",
+  }).toUpperCase();
+  const yr = String(ws.date.getFullYear()).slice(2);
 
   return (
     <div className="flex-1 overflow-y-auto bg-slate-50">
@@ -1282,22 +1988,17 @@ function LiveAgenda({
       {/* Document */}
       <div className="mx-auto max-w-3xl px-6 py-10">
         <div className="agenda-doc rounded-xl bg-white p-12 shadow-sm ring-1 ring-slate-200/60">
-          {/* Header */}
+          {/* Header — Edison format */}
           <div className="mb-10 text-center">
-            <p className="text-sm font-bold uppercase tracking-widest text-slate-800">
-              AGENDA
-            </p>
-            <h1 className="mt-2 text-xl font-bold tracking-wide text-slate-900">
-              MUNICIPAL COUNCIL
+            <h1 className="text-base font-bold uppercase tracking-widest text-slate-900">
+              TOWNSHIP OF EDISON
             </h1>
-            <p className="mt-1 text-base font-bold text-slate-900">
-              REGULAR MEETING
+            <p className="mt-2 text-sm font-bold uppercase tracking-wide text-slate-800">
+              COUNCIL MEETING AGENDA
             </p>
             <div className="mx-auto mt-3 h-px w-24 bg-slate-300" />
-            <p className="mt-3 text-sm text-slate-600">{meetingDate}</p>
-            <p className="mt-1 text-xs text-slate-500">7:00 P.M.</p>
-            <p className="mt-3 text-[11px] uppercase tracking-widest text-slate-400">
-              Municipal Council Chambers &mdash; Edison Municipal Complex
+            <p className="mt-3 text-sm font-medium text-slate-700">
+              {meetingDateFull} &ndash; 7:00 pm
             </p>
           </div>
 
@@ -1310,214 +2011,208 @@ function LiveAgenda({
             </div>
           )}
 
-          {/* Sections */}
-          {grouped.map((section, sectionIdx) => {
-            const now = new Date();
-            const monthYear = `${String(now.getMonth() + 1).padStart(2, "0")}${now.getFullYear()}`;
-
-            return (
-              <div key={section.label} className={sectionIdx > 0 ? "mt-10" : ""}>
-                <div className="mb-6 border-b-2 border-slate-800 pb-2">
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-slate-800">
-                    {SECTION_HEADERS[section.label] ?? section.label}
+          {/* Agenda sections — Edison format with full resolution text */}
+          {accepted.length > 0 && (
+            <div className="mt-8 space-y-10">
+              {/* CONSENT AGENDA */}
+              {resolutions.length > 0 && (
+                <div>
+                  <h2 className="mb-4 border-b-2 border-slate-800 pb-1 text-sm font-bold uppercase tracking-wider text-slate-800">
+                    CONSENT AGENDA
                   </h2>
-                </div>
-
-                {/* Consent agenda note */}
-                {section.label === "Resolutions" && (
                   <p className="mb-6 text-[12px] italic leading-relaxed text-slate-500">
-                    All items listed under the Consent Agenda are considered to be routine by the Municipal Council and will be enacted by one motion in the form listed. There will be no separate discussion of these items. If discussion is desired, that item will be removed from the Consent Agenda and will be considered separately.
+                    All items listed with an asterisk (*) are considered to be routine by the Township Council and will be enacted by one motion. There will be no separate discussion of these items unless a Council member so requests, in which event the item will be removed from the Consent Agenda and considered in its normal sequence on the agenda.
                   </p>
-                )}
+                  {resolutions.map((item, resIdx) => {
+                    const fields = parseJson<ExtractedFields>(item.extracted_fields, {});
+                    const comp = parseJson<CompletenessCheck>(item.completeness, {
+                      needs_cfo_certification: false, needs_attorney_review: false,
+                      missing_block_lot: false, missing_statutory_citation: false, notes: [],
+                    });
+                    const override = parseJson<TextOverride>(item.text_override ?? "{}", {});
+                    const hasOverride = Object.keys(override).length > 0;
+                    const clause = generateClause(item.item_type!, fields, item.summary, comp);
+                    const lineItems = Array.isArray(fields.line_items) ? fields.line_items as LineItem[] : [];
+                    const letter = String.fromCharCode(97 + resIdx);
+                    const resNum = `#${yr}-${resIdx + 1}`;
 
-                {section.items.map((item, itemIdx) => {
-                  const fields = parseJson<ExtractedFields>(item.extracted_fields, {});
-                  const comp = parseJson<CompletenessCheck>(item.completeness, {
-                    needs_cfo_certification: false, needs_attorney_review: false,
-                    missing_block_lot: false, missing_statutory_citation: false, notes: [],
-                  });
-                  const issues = completenessIssues(comp);
-                  const isResolution = item.item_type?.startsWith("resolution_");
-                  const isOrdinance = item.item_type?.startsWith("ordinance_");
+                    const genWhereas = clause.whereas.map((w, i, a) =>
+                      `WHEREAS, ${w}${i < a.length - 1 ? "; and" : ";"}`
+                    );
+                    const whereas = override.whereas ?? genWhereas;
+                    const genResolved = `NOW, THEREFORE, BE IT RESOLVED by the Township Council of the Township of Edison, County of Middlesex, State of New Jersey, that ${clause.resolved}; and`;
+                    const resolved = override.resolved ?? genResolved;
+                    const genFurther = [
+                      "BE IT FURTHER RESOLVED that the aforementioned recitals are incorporated herein as though fully set forth at length; and",
+                      `BE IT FURTHER RESOLVED that a certified copy of this Resolution shall be forwarded to ${clause.cfoNote ? "the Chief Financial Officer, " : ""}the Township Clerk, and any other interested parties.`,
+                    ];
+                    const further = override.further_resolved ?? genFurther;
 
-                  // Resolution numbering: R.XXX-MMYYYY (e.g. R.360-062024)
-                  // Use a base number + item index for sequential numbering
-                  const resolutionNum = isResolution
-                    ? `R.${String(300 + itemIdx + 1).padStart(3, "0")}-${monthYear}`
-                    : null;
+                    return (
+                      <div key={item.id} className="group relative mb-8 pl-6">
+                        {/* Resolution header */}
+                        <p className="mb-3 text-[13px] font-semibold text-slate-800">
+                          {letter}. Resolution {resNum}
+                          {hasOverride && (
+                            <span className="no-print ml-2 inline-block rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-medium text-indigo-500">edited</span>
+                          )}
+                        </p>
 
-                  return (
-                    <div key={item.id} className="group relative mb-8">
-                      {/* Item number + type + department */}
-                      <div className="mb-2 flex items-center gap-3">
-                        {resolutionNum && (
-                          <span className="mono-num text-xs font-bold text-slate-500">{resolutionNum}</span>
-                        )}
-                        {!isResolution && (
-                          <span className="mono-num text-xs font-bold text-slate-400">
-                            {String(itemIdx + 1).padStart(2, "0")}
-                          </span>
-                        )}
-                        <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                          {TYPE_META[item.item_type ?? ""]?.label ?? "Item"}
-                        </span>
-                        {item.department && (
-                          <span className="text-[10px] text-slate-400">{item.department}</span>
-                        )}
-                        <div className="no-print ml-auto flex gap-1 opacity-0 transition-all group-hover:opacity-100">
+                        {/* Hover controls */}
+                        <div className="no-print absolute -right-2 top-0 flex gap-1 opacity-0 transition-all group-hover:opacity-100">
+                          <button onClick={() => { setTrailEmailId(item.email_id); setTrailSubject(item.email_subject); }} className="rounded px-2 py-0.5 text-[10px] text-slate-300 hover:text-indigo-500">Trail</button>
+                          <button onClick={() => { setHistoryItemId(item.id); setHistorySubject(item.email_subject); }} className="rounded px-2 py-0.5 text-[10px] text-slate-300 hover:text-indigo-500">History</button>
+                          <button onClick={() => onAction(item.id, "new")} className="rounded px-2 py-0.5 text-[10px] text-slate-300 hover:text-red-500">Remove</button>
+                        </div>
+
+                        {/* WHEREAS clauses */}
+                        <div className="group/whereas relative">
+                          {whereas.map((para, wi) => (
+                            <p key={wi} className="group/clause relative mb-2 text-[12px] leading-relaxed text-slate-600">
+                              <InlineEdit
+                                value={para}
+                                onSave={(newText) => {
+                                  const updated = [...whereas];
+                                  updated[wi] = newText;
+                                  saveOverride(item.id, "whereas", updated);
+                                }}
+                              />
+                              {whereas.length > 1 && (
+                                <button
+                                  onClick={() => saveOverride(item.id, "whereas", whereas.filter((_, i) => i !== wi))}
+                                  className="no-print absolute -right-5 top-0.5 text-slate-300 opacity-0 hover:text-red-400 group-hover/clause:opacity-100"
+                                  title="Remove clause"
+                                >
+                                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                                </button>
+                              )}
+                            </p>
+                          ))}
                           <button
-                            onClick={() => { setTrailEmailId(item.email_id); setTrailSubject(item.email_subject); }}
-                            className="rounded px-2 py-0.5 text-[10px] text-slate-300 transition-all hover:bg-indigo-50 hover:text-indigo-500"
+                            onClick={() => saveOverride(item.id, "whereas", [...whereas, "WHEREAS, ; and"])}
+                            className="no-print absolute -bottom-1 left-0 text-[11px] text-slate-300 opacity-0 hover:text-indigo-500 group-hover/whereas:opacity-100"
                           >
-                            Trail
+                            + Add clause
                           </button>
-                          <button
-                            onClick={() => onAction(item.id, "new")}
-                            className="rounded px-2 py-0.5 text-[10px] text-slate-300 transition-all hover:bg-red-50 hover:text-red-500"
-                          >
-                            Remove
-                          </button>
+                        </div>
+
+                        {/* RESOLVED */}
+                        <p className="mt-4 text-[12px] leading-relaxed text-slate-600">
+                          <InlineEdit value={resolved} onSave={(newText) => saveOverride(item.id, "resolved", newText)} />
+                        </p>
+
+                        {/* FURTHER RESOLVED */}
+                        {further.map((para, fi) => (
+                          <p key={fi} className="mt-2 text-[12px] leading-relaxed text-slate-600">
+                            <InlineEdit
+                              value={para}
+                              onSave={(newText) => {
+                                const updated = [...further];
+                                updated[fi] = newText;
+                                saveOverride(item.id, "further_resolved", updated);
+                              }}
+                            />
+                          </p>
+                        ))}
+
+                        {/* Disbursement table */}
+                        {item.item_type === "resolution_disbursement" && lineItems.length > 0 && (() => {
+                          const totalItem = lineItems.find((li) => /total/i.test(li.payee));
+                          const fundItems = lineItems.filter((li) => !/total/i.test(li.payee));
+                          return (
+                            <div className="mt-6">
+                              <p className="mb-1 text-center text-[12px] font-bold uppercase text-slate-700">Report of Disbursements</p>
+                              <table className="mt-2 w-full border-collapse text-[11px]">
+                                <thead><tr className="border-b border-slate-300"><th className="pb-1 text-left font-bold text-slate-700">Fund</th><th className="pb-1 text-right font-bold text-slate-700">Amount</th></tr></thead>
+                                <tbody>
+                                  {fundItems.map((li, liIdx) => (
+                                    <tr key={liIdx}><td className="py-0.5 text-slate-600">{li.payee}</td><td className="py-0.5 text-right font-mono tabular-nums text-slate-600">{li.amount}</td></tr>
+                                  ))}
+                                </tbody>
+                                <tfoot><tr className="border-t border-slate-300"><td className="pt-1 font-bold text-slate-800">Total</td><td className="pt-1 text-right font-mono font-bold tabular-nums text-slate-800">{totalItem?.amount ?? primaryAmount(fields) ?? "\u2014"}</td></tr></tfoot>
+                              </table>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ORDINANCES */}
+              {ordinances.length > 0 && (
+                <div>
+                  <h2 className="mb-4 border-b-2 border-slate-800 pb-1 text-sm font-bold uppercase tracking-wider text-slate-800">
+                    FOR FURTHER CONSIDERATION AND PUBLIC HEARING OF ORDINANCES
+                  </h2>
+                  {ordinances.map((item) => {
+                    const fields = parseJson<ExtractedFields>(item.extracted_fields, {});
+                    const override = parseJson<TextOverride>(item.text_override ?? "{}", {});
+                    const hasOverride = Object.keys(override).length > 0;
+                    const ordTitle = override.ordinance_title ?? generateOrdinanceTitle(item.item_type!, fields, item.summary);
+                    return (
+                      <div key={item.id} className="group relative mb-6 pl-6">
+                        <p className="text-[12px] font-bold uppercase leading-relaxed text-slate-800">
+                          <InlineEdit
+                            value={ordTitle}
+                            onSave={(newText) => saveOverride(item.id, "ordinance_title", newText)}
+                            className="uppercase"
+                          />
+                          {hasOverride && (
+                            <span className="no-print ml-2 inline-block rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-medium normal-case text-indigo-500">edited</span>
+                          )}
+                        </p>
+                        <div className="no-print absolute -right-2 top-0 flex gap-1 opacity-0 transition-all group-hover:opacity-100">
+                          <button onClick={() => { setTrailEmailId(item.email_id); setTrailSubject(item.email_subject); }} className="rounded px-2 py-0.5 text-[10px] text-slate-300 hover:text-indigo-500">Trail</button>
+                          <button onClick={() => { setHistoryItemId(item.id); setHistorySubject(item.email_subject); }} className="rounded px-2 py-0.5 text-[10px] text-slate-300 hover:text-indigo-500">History</button>
+                          <button onClick={() => onAction(item.id, "new")} className="rounded px-2 py-0.5 text-[10px] text-slate-300 hover:text-red-500">Remove</button>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              )}
 
-                      {/* Completeness warnings */}
-                      {issues.length > 0 && (
-                        <div className="no-print mb-3 flex flex-wrap gap-2">
-                          {comp.needs_cfo_certification && (
-                            <span className="rounded-md bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-600">Pending CFO Certification</span>
+              {/* DISCUSSION ITEMS */}
+              {discussionItems.length > 0 && (
+                <div>
+                  <h2 className="mb-4 border-b-2 border-slate-800 pb-1 text-sm font-bold uppercase tracking-wider text-slate-800">
+                    DISCUSSION ITEMS
+                  </h2>
+                  {discussionItems.map((item, idx) => {
+                    const override = parseJson<TextOverride>(item.text_override ?? "{}", {});
+                    const hasOverride = Object.keys(override).length > 0;
+                    return (
+                      <div key={item.id} className="group relative mb-4 pl-6">
+                        <p className="text-[12px] leading-relaxed text-slate-700">
+                          <span className="mr-2 font-semibold">{idx + 1}.</span>
+                          <InlineEdit
+                            value={override.summary ?? item.summary ?? item.email_subject}
+                            onSave={(newText) => saveOverride(item.id, "summary", newText)}
+                          />
+                          {hasOverride && (
+                            <span className="no-print ml-1.5 inline-block rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-medium text-indigo-500">edited</span>
                           )}
-                          {comp.needs_attorney_review && (
-                            <span className="rounded-md bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-600">Pending Attorney Review</span>
-                          )}
-                          {comp.missing_block_lot && (
-                            <span className="rounded-md bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-600">Missing Block/Lot</span>
-                          )}
-                          {comp.missing_statutory_citation && (
-                            <span className="rounded-md bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-600">Missing Statutory Citation</span>
-                          )}
+                        </p>
+                        <div className="no-print absolute -right-2 top-0 flex gap-1 opacity-0 transition-all group-hover:opacity-100">
+                          <button onClick={() => { setTrailEmailId(item.email_id); setTrailSubject(item.email_subject); }} className="rounded px-2 py-0.5 text-[10px] text-slate-300 hover:text-indigo-500">Trail</button>
+                          <button onClick={() => { setHistoryItemId(item.id); setHistorySubject(item.email_subject); }} className="rounded px-2 py-0.5 text-[10px] text-slate-300 hover:text-indigo-500">History</button>
+                          <button onClick={() => onAction(item.id, "new")} className="rounded px-2 py-0.5 text-[10px] text-slate-300 hover:text-red-500">Remove</button>
                         </div>
-                      )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
-                      {/* Resolution clause */}
-                      {isResolution && (() => {
-                        const clause = generateClause(item.item_type!, fields, item.summary, comp);
-                        const lineItems = Array.isArray(fields.line_items) ? fields.line_items as LineItem[] : [];
-                        return (
-                          <div className="pl-6">
-                            {clause.whereas.map((w, wi) => (
-                              <p key={wi} className="mb-2 text-[13px] leading-relaxed text-slate-700">
-                                <span className="font-bold">WHEREAS, </span>
-                                {w}
-                                {wi < clause.whereas.length - 1 ? "; and" : ";"}
-                              </p>
-                            ))}
-                            <p className="mt-4 text-[13px] leading-relaxed text-slate-700">
-                              <span className="font-bold">NOW, THEREFORE, BE IT RESOLVED </span>
-                              by the Municipal Council of the Township of Edison, County of Middlesex, State of New Jersey, that {clause.resolved}; and
-                            </p>
-                            <p className="mt-2 text-[13px] leading-relaxed text-slate-700">
-                              <span className="font-bold">BE IT FURTHER RESOLVED </span>
-                              that the aforementioned recitals are incorporated herein as though fully set forth at length; and
-                            </p>
-                            <p className="mt-2 text-[13px] leading-relaxed text-slate-700">
-                              <span className="font-bold">BE IT FURTHER RESOLVED </span>
-                              that a certified copy of this Resolution shall be forwarded to {clause.cfoNote ? "the Chief Financial Officer, " : ""}the Township Clerk, and any other interested parties.
-                            </p>
-
-                            {/* Disbursement line items — Edison Township "Report of Disbursements" format */}
-                            {item.item_type === "resolution_disbursement" && lineItems.length > 0 && (() => {
-                              const totalItem = lineItems.find((li) => /total/i.test(li.payee));
-                              const fundItems = lineItems.filter((li) => !/total/i.test(li.payee));
-                              return (
-                                <div className="mt-8">
-                                  <p className="mb-1 text-center text-[13px] font-bold uppercase tracking-wide text-slate-800">
-                                    Report of Disbursements
-                                  </p>
-                                  <p className="mb-4 text-center text-[12px] text-slate-500">
-                                    For the Period Ending {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-                                  </p>
-                                  <table className="w-full border-collapse text-[12.5px]">
-                                    <thead>
-                                      <tr className="border-b-2 border-slate-800">
-                                        <th className="pb-1.5 text-left font-bold uppercase text-slate-800">Fund</th>
-                                        <th className="pb-1.5 text-right font-bold uppercase text-slate-800">Amount</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {fundItems.map((li, liIdx) => (
-                                        <tr key={liIdx}>
-                                          <td className="py-1 text-slate-700">{li.payee}</td>
-                                          <td className="py-1 text-right font-mono tabular-nums text-slate-700">{li.amount}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                    <tfoot>
-                                      <tr className="border-t-2 border-slate-800">
-                                        <td className="pt-2 font-bold uppercase text-slate-900">Total</td>
-                                        <td className="pt-2 text-right font-mono font-bold tabular-nums text-slate-900">
-                                          {totalItem?.amount ?? primaryAmount(fields) ?? "—"}
-                                        </td>
-                                      </tr>
-                                    </tfoot>
-                                  </table>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        );
-                      })()}
-
-                      {/* Ordinance */}
-                      {isOrdinance && (
-                        <div className="pl-6">
-                          <p className="text-[13px] font-bold uppercase leading-relaxed tracking-wide text-slate-800">
-                            {generateOrdinanceTitle(item.item_type!, fields, item.summary)}
-                          </p>
-                          {item.summary && (
-                            <p className="mt-2 text-[13px] italic leading-relaxed text-slate-600">
-                              {item.summary}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Discussion / Other */}
-                      {!isResolution && !isOrdinance && (
-                        <div className="pl-6">
-                          <p className="text-[13px] leading-relaxed text-slate-700">
-                            {item.summary || item.email_subject}
-                          </p>
-                          {typeof fields.recommended_action === "string" && (
-                            <p className="mt-1 text-[12px] italic text-slate-500">
-                              Recommended action: {fields.recommended_action}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Separator */}
-                      {itemIdx < section.items.length - 1 && (
-                        <div className="mt-6 border-b border-slate-200/50" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-
-          {/* Footer */}
+          {/* Clerk signature */}
           {accepted.length > 0 && (
-            <div className="mt-12 border-t border-slate-300 pt-6 text-center">
-              <p className="text-[11px] uppercase tracking-widest text-slate-400">End of Agenda</p>
-              <p className="mt-1 text-[10px] text-slate-300">
-                {accepted.length} item{accepted.length !== 1 ? "s" : ""} total
-                {" \u00B7 "}
-                Generated {new Date().toLocaleDateString("en-US", {
-                  month: "long", day: "numeric", year: "numeric",
-                  hour: "numeric", minute: "2-digit",
-                })}
-              </p>
+            <div className="mt-16 text-right">
+              <p className="text-[13px] font-medium uppercase text-slate-700">Cheryl Russomanno, RMC</p>
+              <p className="text-[12px] text-slate-500">Township Clerk</p>
             </div>
           )}
         </div>
@@ -1528,6 +2223,19 @@ function LiveAgenda({
         <>
           <div className="animate-fade-in fixed inset-0 z-40 bg-slate-900/15 backdrop-blur-sm" onClick={() => setTrailEmailId(null)} />
           <TrailSidebar emailId={trailEmailId} subject={trailSubject} onClose={() => setTrailEmailId(null)} />
+        </>
+      )}
+
+      {/* History sidebar overlay */}
+      {historyItemId && (
+        <>
+          <div className="animate-fade-in fixed inset-0 z-40 bg-slate-900/15 backdrop-blur-sm" onClick={() => setHistoryItemId(null)} />
+          <HistorySidebar
+            itemId={historyItemId}
+            subject={historySubject}
+            onClose={() => setHistoryItemId(null)}
+            onRevert={(field) => { revertField(historyItemId, field); setHistoryItemId(null); }}
+          />
         </>
       )}
     </div>
@@ -1674,7 +2382,7 @@ function DetailDrawer({
               </div>
             ))}
           </div>
-          {comp.notes.length > 0 && (
+          {comp.notes?.length > 0 && (
             <div className="mt-3 space-y-1 rounded-lg bg-slate-100/60 p-3">
               {comp.notes.map((n, i) => (
                 <p key={i} className="text-[11px] text-slate-500">· {n}</p>
@@ -1829,7 +2537,7 @@ export default function DashboardPage() {
 
         {loading ? (
           <div className="flex flex-1 items-center justify-center">
-            <div className="h-5 w-5 animate-spin rounded-full border-2" style={{ borderColor: "#E5E5E8", borderTopColor: "#5E6AD2" }} />
+            <div className="h-5 w-5 animate-spin rounded-full" style={{ borderWidth: 2, borderStyle: "solid", borderRightColor: "#E5E5E8", borderBottomColor: "#E5E5E8", borderLeftColor: "#E5E5E8", borderTopColor: "#5E6AD2" }} />
           </div>
         ) : entries.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center">
@@ -1850,7 +2558,9 @@ export default function DashboardPage() {
         ) : view === "command" ? (
           <CommandCenter entries={entries} stats={stats} onViewChange={setView} onSelect={(id) => setSelectedId(id)} />
         ) : view === "live_agenda" ? (
-          <LiveAgenda entries={entries} onAction={doAction} />
+          <LiveAgenda entries={entries} onAction={doAction} onRefresh={fetch_} />
+        ) : view === "ordinances" ? (
+          <OrdinancesView onSelect={(id) => setSelectedId(id)} />
         ) : (
           <div className="flex min-h-0 flex-1">
             <div className="min-w-0 flex-1 overflow-y-auto">

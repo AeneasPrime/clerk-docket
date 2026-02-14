@@ -59,7 +59,7 @@ const insert = db.prepare(`
 const entries = [
   {
     email_id: "test-001",
-    from: "Robert Chen <rchen@edison.nj.us>",
+    from: "Robert Chen <rchen@edisonnj.org>",
     subject: "Resolution for Bid Award - Oak Tree Road Resurfacing Project",
     date: "Mon, 3 Feb 2026 09:15:00 -0500",
     preview: "Please find attached the recommendation to award Bid #2026-015 for the resurfacing of Oak Tree Road (Section 3) to Della Pello Paving, Inc., 42 Industrial Parkway, South Plainfield, NJ 08080, in the amount of $347,500.00 pursuant to N.J.S.A. 40A:11-1 et seq. The CFO certification is attached. Account: C-04-55-901-002.",
@@ -90,7 +90,7 @@ const entries = [
   },
   {
     email_id: "test-002",
-    from: "Maria Santos <msantos@edison.nj.us>",
+    from: "Maria Santos <msantos@edisonnj.org>",
     subject: "Tax Overpayment Refunds - January 2026 Batch",
     date: "Tue, 4 Feb 2026 10:30:00 -0500",
     preview: "Attached is the list of tax overpayment refunds for Council approval. Total refund amount: $14,280.50 across 8 properties. Block 382, Lot 12 - $3,200.00 (duplicate payment); Block 156.01, Lot 45 - $1,890.50 (assessment reduction); Block 421, Lot 8 - $2,150.00 (exemption applied retroactively)...",
@@ -116,7 +116,7 @@ const entries = [
   },
   {
     email_id: "test-003",
-    from: "James Walsh <jwalsh@edison.nj.us>",
+    from: "James Walsh <jwalsh@edisonnj.org>",
     subject: "Professional Services Contract - Environmental Consulting for Raritan Center",
     date: "Tue, 4 Feb 2026 14:22:00 -0500",
     preview: "Requesting Council approval for a professional services contract with Langan Engineering, 300 Kimball Drive, Parsippany, NJ 07054, for environmental site assessment and remediation oversight at the former Raritan Center industrial parcel. Contract not to exceed $125,000.00 pursuant to N.J.S.A. 40A:11-5.",
@@ -146,7 +146,7 @@ const entries = [
   },
   {
     email_id: "test-004",
-    from: "Council Member Patricia Rodriguez <prodriguez@edison.nj.us>",
+    from: "Council Member Patricia Rodriguez <prodriguez@edisonnj.org>",
     subject: "Work Session Discussion Topics - February 10",
     date: "Wed, 5 Feb 2026 08:45:00 -0500",
     preview: "I would like to have the following items discussed at the February 10 Work Session:\n1. Status update on the new community center construction timeline\n2. Traffic calming measures for Plainfield Avenue near JP Stevens HS\n3. Update on the Rt. 1 corridor redevelopment plan\n4. Review of the municipal parking lot fee structure",
@@ -170,7 +170,7 @@ const entries = [
   },
   {
     email_id: "test-005",
-    from: "Thomas Park <tpark@edison.nj.us>",
+    from: "Thomas Park <tpark@edisonnj.org>",
     subject: "State Contract Purchase - Dump Trucks for DPW",
     date: "Wed, 5 Feb 2026 11:00:00 -0500",
     preview: "Requesting Council approval to purchase two (2) International HV507 dump trucks through NJ State Contract #A-88752 from Gabrielli Truck Sales, Ltd., for the Department of Public Works. Total purchase price: $189,400.00 each, $378,800.00 total. Account: T-13-56-400-001.",
@@ -199,7 +199,7 @@ const entries = [
   },
   {
     email_id: "test-006",
-    from: "Lisa Montgomery <lmontgomery@edison.nj.us>",
+    from: "Lisa Montgomery <lmontgomery@edisonnj.org>",
     subject: "Bond Release - Regency Square Phase 2 Performance Bond",
     date: "Thu, 6 Feb 2026 09:30:00 -0500",
     preview: "The Engineering Department has inspected and approved all improvements for Regency Square Phase 2 subdivision. We recommend release of the performance bond in the amount of $450,000.00 posted by Regency Development Group, LLC. Block 487, Lots 22-35. All infrastructure meets township standards.",
@@ -228,7 +228,7 @@ const entries = [
   },
   {
     email_id: "test-007",
-    from: "Edison Parks & Recreation <parks@edison.nj.us>",
+    from: "Edison Parks & Recreation <parks@edisonnj.org>",
     subject: "Weekly Recreation Newsletter - February Activities",
     date: "Thu, 6 Feb 2026 12:00:00 -0500",
     preview: "Happy February, Edison! Here's what's happening this month at Parks & Recreation: Valentine's Day Craft Workshop (Feb 8), Winter Basketball League games every Saturday, Senior Yoga classes continue Tuesdays and Thursdays, and don't forget to register for Spring Soccer by Feb 28!",
@@ -250,7 +250,7 @@ const entries = [
   },
   {
     email_id: "test-008",
-    from: "Anthony Russo <arusso@edison.nj.us>",
+    from: "Anthony Russo <arusso@edisonnj.org>",
     subject: "Ordinance Amendment - Chapter 23 Zoning - Mixed Use Overlay District",
     date: "Fri, 7 Feb 2026 10:15:00 -0500",
     preview: "Attached is the draft ordinance amending Chapter 23, Article IX of the Edison Township Code to establish a Mixed Use Overlay (MU-O) District along the Route 27 corridor from Talmadge Road to Plainfield Avenue. This follows the Planning Board's recommendation from their January 14 meeting.",
@@ -276,7 +276,7 @@ const entries = [
   },
   {
     email_id: "test-009",
-    from: "Karen Liu <kliu@edison.nj.us>",
+    from: "Karen Liu <kliu@edisonnj.org>",
     subject: "CFO Disbursement Report - January 2026",
     date: "Fri, 7 Feb 2026 14:00:00 -0500",
     preview: "Attached is the disbursement report for the period ending January 31, 2026. Current Fund: $4,287,341.12; Water/Sewer Utility: $892,450.00; Capital Fund: $1,245,000.00; Trust Fund: $156,200.00. Total disbursements: $6,580,991.12. All payments have been verified and certified.",
@@ -301,7 +301,7 @@ const entries = [
   },
   {
     email_id: "test-010",
-    from: "David Kim <dkim@edison.nj.us>",
+    from: "David Kim <dkim@edisonnj.org>",
     subject: "Liquor License Renewal - Jade Garden Restaurant",
     date: "Fri, 7 Feb 2026 15:30:00 -0500",
     preview: "Application for renewal of Plenary Retail Consumption License #1205-33-007-007 for Jade Garden Restaurant, 1755 Route 27, Edison, NJ 08817. All fees paid, ABC clearance received, no violations on record. Recommend approval.",

@@ -55,6 +55,8 @@ export interface ExtractedFields {
   recommended_action?: string;
   dollar_amounts?: string[];
   line_items?: { payee: string; amount: string; description?: string }[];
+  ordinance_number?: string;
+  reading_stage?: "first" | "second";
   [key: string]: string | string[] | { payee: string; amount: string; description?: string }[] | undefined;
 }
 
@@ -102,6 +104,50 @@ export interface DocketEntry {
   status: DocketStatus;
   notes: string;
   target_meeting_date: string | null;
+  text_override: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TextOverride {
+  whereas?: string[];
+  resolved?: string;
+  further_resolved?: string[];
+  ordinance_title?: string;
+  summary?: string;
+}
+
+export interface DocketHistoryEntry {
+  id: number;
+  docket_id: number;
+  field_name: string;
+  old_value: string;
+  new_value: string;
+  changed_at: string;
+}
+
+export interface OrdinanceTracking {
+  id: number;
+  docket_id: number;
+  ordinance_number: string | null;
+  introduction_date: string | null;
+  introduction_meeting: string | null;
+  pub_intro_date: string | null;
+  pub_intro_newspaper: string | null;
+  bulletin_posted_date: string | null;
+  hearing_date: string | null;
+  hearing_amended: number;
+  hearing_notes: string;
+  adoption_date: string | null;
+  adoption_vote: string | null;
+  adoption_failed: number;
+  pub_final_date: string | null;
+  pub_final_newspaper: string | null;
+  effective_date: string | null;
+  is_emergency: number;
+  website_posted_date: string | null;
+  website_url: string | null;
+  clerk_notes: string;
   created_at: string;
   updated_at: string;
 }

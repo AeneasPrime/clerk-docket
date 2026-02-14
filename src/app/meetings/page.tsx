@@ -108,10 +108,10 @@ function Sidebar({ filter, onFilterChange }: {
 }) {
   return (
     <aside className="flex w-56 shrink-0 flex-col" style={{ background: "#1F2023" }}>
-      <div className="px-5 py-5">
+      <a href="/dashboard" className="block px-5 py-5 transition-opacity hover:opacity-80">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-white">Office of the Clerk</p>
         <p className="text-[10px] tracking-[0.2em]" style={{ color: "#6B6F76" }}>Edison Township</p>
-      </div>
+      </a>
 
       <nav className="mt-2 flex-1 overflow-y-auto px-3 pb-3">
         <p className="sb-section-label mb-2 px-2.5">Navigation</p>
