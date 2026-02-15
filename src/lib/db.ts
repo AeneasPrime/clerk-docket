@@ -267,6 +267,13 @@ export function getDocketEntry(id: number): DocketEntry | null {
   return row ?? null;
 }
 
+export function getDocketEntryByEmailId(emailId: string): DocketEntry | null {
+  const row = db.prepare("SELECT * FROM docket WHERE email_id = ?").get(emailId) as
+    | DocketEntry
+    | undefined;
+  return row ?? null;
+}
+
 export function updateDocketEntry(
   id: number,
   updates: {

@@ -577,7 +577,7 @@ function MeetingDetail({ meetingId, onBack }: {
 // --- Main Page ---
 
 export default function MeetingsPage() {
-  const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
+  const [filter, setFilter] = useState<"upcoming" | "past" | "all">("all");
   const [cycles, setCycles] = useState<MeetingCycle[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMeetingId, setSelectedMeetingId] = useState<number | null>(null);

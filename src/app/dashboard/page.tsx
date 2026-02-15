@@ -406,24 +406,14 @@ function CommandCenter({
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => onViewChange("agenda")} className="rounded-lg px-3 py-2.5 text-left" style={{ background: "#F5F5F5" }}>
                   <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>On Agenda</span>
-                  <div className="mt-0.5 flex items-baseline gap-1.5">
+                  <div className="mt-0.5">
                     <span className="text-[22px] font-semibold tabular-nums" style={{ color: "#1D2024" }}>{accepted.length}</span>
-                    {agendaTotal > 0 && (
-                      <span className="text-[11px] font-medium" style={{ color: "#16A34A" }}>
-                        ${agendaTotal >= 1000 ? `${(agendaTotal / 1000).toFixed(agendaTotal >= 10000 ? 0 : 1)}k` : agendaTotal.toLocaleString()}
-                      </span>
-                    )}
                   </div>
                 </button>
                 <div className="rounded-lg px-3 py-2.5" style={{ background: "#F5F5F5" }}>
                   <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>Issues</span>
-                  <div className="mt-0.5 flex items-baseline gap-1.5">
+                  <div className="mt-0.5">
                     <span className="text-[22px] font-semibold tabular-nums" style={{ color: agendaIssues.total > 0 ? "#B45309" : "#1D2024" }}>{agendaIssues.total}</span>
-                    {agendaIssues.total > 0 ? (
-                      <span className="text-[11px] font-medium" style={{ color: "#B45309" }}>flagged</span>
-                    ) : accepted.length > 0 ? (
-                      <span className="text-[11px] font-medium" style={{ color: "#16A34A" }}>clear</span>
-                    ) : null}
                   </div>
                 </div>
               </div>
@@ -548,28 +538,26 @@ function CommandCenter({
               {deptBreakdown.length === 0 ? (
                 <p className="py-4 text-center text-[11px]" style={{ color: "#9CA0AB" }}>No items yet</p>
               ) : (
-                <div className="space-y-0.5">
-                  {deptBreakdown.slice(0, 8).map(([dept, counts]) => (
-                    <div key={dept} className="flex items-center gap-3 py-1.5">
-                      {counts.flagged > 0 ? (
+                <div className="space-y-2.5">
+                  {deptBreakdown.slice(0, 8).map(([dept, counts]) => {
+                    const maxCount = Math.max(deptBreakdown[0]?.[1]?.total ?? 1, 1);
+                    const pct = Math.max((counts.total / maxCount) * 100, 8);
+                    const barColor = counts.flagged > 0 ? "#F2555A" : counts.new_ > 0 ? "#5E6AD2" : "#1D6B5B";
+                    return (
+                      <div key={dept} className="flex items-center gap-3">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
-                          <circle cx="8" cy="8" r="7" stroke="#F2555A" strokeWidth="1.5"/>
-                          <path d="M8 5v3M8 10.5v.5" stroke="#F2555A" strokeWidth="1.5" strokeLinecap="round"/>
+                          <circle cx="8" cy="8" r="7" stroke={barColor} strokeWidth="1.5" fill={barColor} fillOpacity={0.08}/>
+                          <text x="8" y="11" textAnchor="middle" fontSize="8" fontWeight="600" fill={barColor}>{dept[0]}</text>
                         </svg>
-                      ) : counts.new_ > 0 ? (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
-                          <circle cx="8" cy="8" r="7" stroke="#5E6AD2" strokeWidth="1.5"/>
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
-                          <circle cx="8" cy="8" r="8" fill="#16A34A" opacity="0.12"/>
-                          <path d="M5 8l2 2 4-4" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                      <span className="min-w-0 flex-1 truncate text-[12px]" style={{ color: "#1D2024" }}>{dept}</span>
-                      <span className="text-[11px] tabular-nums" style={{ color: "#9CA0AB" }}>{counts.total}</span>
-                    </div>
-                  ))}
+                        <span className="w-28 shrink-0 truncate text-[12px]" style={{ color: "#1D2024" }}>{dept}</span>
+                        <div className="flex-1">
+                          <div className="h-2 overflow-hidden rounded-full" style={{ background: "#E8E8EA" }}>
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: barColor }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -637,7 +625,7 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
 
       {/* Nav */}
       <nav className="mt-2 flex-1 overflow-y-auto px-3 pb-3">
-        <p className="sb-section-label mb-2 px-2.5">Workflow</p>
+        <p className="sb-section-label mb-2 px-2.5">Dashboard</p>
         {navItems.map((item) => (
           <button
             key={item.id}
@@ -2612,7 +2600,7 @@ export default function DashboardPage() {
       <Sidebar view={view} onViewChange={handleViewChange} stats={stats} deptFilter={deptFilter} onDeptFilter={setDeptFilter} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar stats={stats} scanning={scanning} scanMessage={scanMsg} onScan={doScan} />
+        {view !== "command" && <TopBar stats={stats} scanning={scanning} scanMessage={scanMsg} onScan={doScan} />}
 
         {loading ? (
           <div className="flex flex-1 items-center justify-center">
