@@ -340,226 +340,269 @@ function CommandCenter({
 
         {/* Metric Cards */}
         <div className="mb-6 grid grid-cols-4 gap-4">
-          <div className="rounded-lg bg-white px-5 py-4" style={{ border: "1px solid #E5E5E8" }}>
-            <p className="text-[11px] font-medium" style={{ color: "#9CA0AB" }}>Next Meeting</p>
-            <p className="mt-2 text-[22px] font-semibold tabular-nums" style={{ color: "#1D2024" }}>
-              {ws.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-            </p>
-            <p className="mt-1 text-[12px] font-medium" style={{ color: ws.days <= 2 ? "#F2555A" : ws.days <= 5 ? "#E59500" : "#9CA0AB" }}>
-              {ws.days === 0 ? "Today" : ws.days === 1 ? "Tomorrow" : `${ws.days} days away`}
-            </p>
+          <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div className="px-4 py-2.5" style={{ background: "#1F2023" }}>
+              <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>Next Meeting</span>
+            </div>
+            <div className="bg-white px-4 py-3">
+              <p className="text-[20px] font-semibold tabular-nums" style={{ color: "#1D2024" }}>
+                {ws.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </p>
+              <p className="mt-0.5 text-[11px] font-medium" style={{ color: ws.days <= 2 ? "#F2555A" : ws.days <= 5 ? "#E59500" : "#9CA0AB" }}>
+                {ws.days === 0 ? "Today" : ws.days === 1 ? "Tomorrow" : `${ws.days} days away`}
+              </p>
+            </div>
           </div>
 
-          <button onClick={() => onViewChange("agenda")} className="rounded-lg bg-white px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]" style={{ border: "1px solid #E5E5E8" }}>
-            <p className="text-[11px] font-medium" style={{ color: "#9CA0AB" }}>On Agenda</p>
-            <p className="mt-2 text-[22px] font-semibold tabular-nums" style={{ color: "#26B5CE" }}>{accepted.length}</p>
-            {agendaTotal > 0 ? (
-              <p className="mt-1 font-mono text-[12px]" style={{ color: "#9CA0AB" }}>
-                ${agendaTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <button onClick={() => onViewChange("agenda")} className="overflow-hidden rounded-2xl text-left transition-colors hover:opacity-95" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div className="px-4 py-2.5" style={{ background: "#1F2023" }}>
+              <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>On Agenda</span>
+            </div>
+            <div className="bg-white px-4 py-3">
+              <p className="text-[20px] font-semibold tabular-nums" style={{ color: "#26B5CE" }}>{accepted.length}</p>
+              <p className="mt-0.5 text-[11px]" style={{ color: "#9CA0AB" }}>
+                {agendaTotal > 0
+                  ? `$${agendaTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "items accepted"}
               </p>
-            ) : (
-              <p className="mt-1 text-[12px]" style={{ color: "#9CA0AB" }}>items accepted</p>
-            )}
+            </div>
           </button>
 
-          <button onClick={() => onViewChange("review")} className="rounded-lg bg-white px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]" style={{ border: "1px solid #E5E5E8" }}>
-            <p className="text-[11px] font-medium" style={{ color: "#9CA0AB" }}>Needs Review</p>
-            <p className="mt-2 text-[22px] font-semibold tabular-nums" style={{ color: newItems.length > 0 ? "#5E6AD2" : "#D2D3D6" }}>
-              {newItems.length}
-            </p>
-            <p className="mt-1 text-[12px]" style={{ color: "#9CA0AB" }}>
-              {newItems.length === 0 ? "All caught up" : "awaiting action"}
-            </p>
+          <button onClick={() => onViewChange("review")} className="overflow-hidden rounded-2xl text-left transition-colors hover:opacity-95" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div className="px-4 py-2.5" style={{ background: "#1F2023" }}>
+              <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>Needs Review</span>
+            </div>
+            <div className="bg-white px-4 py-3">
+              <p className="text-[20px] font-semibold tabular-nums" style={{ color: newItems.length > 0 ? "#5E6AD2" : "#D2D3D6" }}>
+                {newItems.length}
+              </p>
+              <p className="mt-0.5 text-[11px]" style={{ color: "#9CA0AB" }}>
+                {newItems.length === 0 ? "All caught up" : "awaiting action"}
+              </p>
+            </div>
           </button>
 
-          <button onClick={() => onViewChange("needs_info")} className="rounded-lg bg-white px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA]" style={{ border: "1px solid #E5E5E8" }}>
-            <p className="text-[11px] font-medium" style={{ color: "#9CA0AB" }}>Flagged</p>
-            <p className="mt-2 text-[22px] font-semibold tabular-nums" style={{ color: flagged.length > 0 ? "#F2555A" : "#D2D3D6" }}>
-              {flagged.length}
-            </p>
-            <p className="mt-1 text-[12px]" style={{ color: "#9CA0AB" }}>
-              {flagged.length === 0 ? "No flags" : "needs information"}
-            </p>
+          <button onClick={() => onViewChange("needs_info")} className="overflow-hidden rounded-2xl text-left transition-colors hover:opacity-95" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div className="px-4 py-2.5" style={{ background: "#1F2023" }}>
+              <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>Flagged</span>
+            </div>
+            <div className="bg-white px-4 py-3">
+              <p className="text-[20px] font-semibold tabular-nums" style={{ color: flagged.length > 0 ? "#F2555A" : "#D2D3D6" }}>
+                {flagged.length}
+              </p>
+              <p className="mt-0.5 text-[11px]" style={{ color: "#9CA0AB" }}>
+                {flagged.length === 0 ? "No flags" : "needs information"}
+              </p>
+            </div>
           </button>
         </div>
 
         {/* Two-column middle */}
         <div className="mb-6 grid grid-cols-2 gap-4">
           {/* Meeting Readiness */}
-          <div className="rounded-lg bg-white px-5 py-5" style={{ border: "1px solid #E5E5E8" }}>
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Meeting Readiness</h2>
-              <button onClick={() => onViewChange("live_agenda")} className="text-[11px] font-medium transition-colors hover:opacity-80" style={{ color: "#5E6AD2" }}>
-                View Agenda →
-              </button>
-            </div>
-
-            <div className="mb-5 space-y-3">
-              {agendaSections.map((s) => (
-                <div key={s.label} className="flex items-center justify-between">
-                  <span className="text-[12px]" style={{ color: "#6B6F76" }}>{s.label}</span>
-                  <div className="flex items-center gap-3">
-                    <div className="h-[5px] w-24 overflow-hidden rounded-full" style={{ background: "#F0F0F2" }}>
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: accepted.length > 0 ? `${(s.items.length / Math.max(accepted.length, 1)) * 100}%` : "0%",
-                          background: "#26B5CE",
-                        }}
-                      />
-                    </div>
-                    <span className="w-5 text-right text-[11px] tabular-nums" style={{ color: "#9CA0AB" }}>{s.items.length}</span>
+          <div className="overflow-hidden rounded-2xl bg-white" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div className="px-5 pt-5 pb-4">
+              {/* Two metric boxes */}
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => onViewChange("agenda")} className="rounded-lg px-3 py-2.5 text-left" style={{ background: "#F5F5F5" }}>
+                  <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>On Agenda</span>
+                  <div className="mt-0.5 flex items-baseline gap-1.5">
+                    <span className="text-[22px] font-semibold tabular-nums" style={{ color: "#1D2024" }}>{accepted.length}</span>
+                    {agendaTotal > 0 && (
+                      <span className="text-[11px] font-medium" style={{ color: "#16A34A" }}>
+                        ${agendaTotal >= 1000 ? `${(agendaTotal / 1000).toFixed(agendaTotal >= 10000 ? 0 : 1)}k` : agendaTotal.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </button>
+                <div className="rounded-lg px-3 py-2.5" style={{ background: "#F5F5F5" }}>
+                  <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>Issues</span>
+                  <div className="mt-0.5 flex items-baseline gap-1.5">
+                    <span className="text-[22px] font-semibold tabular-nums" style={{ color: agendaIssues.total > 0 ? "#B45309" : "#1D2024" }}>{agendaIssues.total}</span>
+                    {agendaIssues.total > 0 ? (
+                      <span className="text-[11px] font-medium" style={{ color: "#B45309" }}>flagged</span>
+                    ) : accepted.length > 0 ? (
+                      <span className="text-[11px] font-medium" style={{ color: "#16A34A" }}>clear</span>
+                    ) : null}
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
 
-            {agendaIssues.total > 0 ? (
-              <div className="rounded-md px-4 py-3" style={{ background: "#FFF8F0", border: "1px solid #F5E6D0" }}>
-                <p className="mb-2 text-[11px] font-semibold" style={{ color: "#B45309" }}>
-                  {agendaIssues.total} Completeness {agendaIssues.total === 1 ? "Issue" : "Issues"}
-                </p>
-                <div className="space-y-1">
-                  {agendaIssues.cfo > 0 && <p className="text-[11px]" style={{ color: "#92400E" }}>CFO Certification needed ({agendaIssues.cfo})</p>}
-                  {agendaIssues.attorney > 0 && <p className="text-[11px]" style={{ color: "#92400E" }}>Attorney Review needed ({agendaIssues.attorney})</p>}
-                  {agendaIssues.blockLot > 0 && <p className="text-[11px]" style={{ color: "#92400E" }}>Missing Block/Lot ({agendaIssues.blockLot})</p>}
-                  {agendaIssues.citation > 0 && <p className="text-[11px]" style={{ color: "#92400E" }}>Missing Citation ({agendaIssues.citation})</p>}
-                </div>
+            {/* Section bars */}
+            <div className="px-5 pb-5">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>Agenda breakdown</span>
+                <button onClick={() => onViewChange("live_agenda")} className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>
+                  View →
+                </button>
               </div>
-            ) : accepted.length > 0 ? (
-              <div className="rounded-md px-4 py-3" style={{ background: "#F0FDF4", border: "1px solid #D1FAE5" }}>
-                <p className="text-[11px] font-medium" style={{ color: "#15803D" }}>All agenda items complete</p>
+              <div className="space-y-2.5">
+                {agendaSections.map((s) => {
+                  const maxCount = Math.max(...agendaSections.map((sec) => sec.items.length), 1);
+                  const pct = s.items.length > 0 ? Math.max((s.items.length / maxCount) * 100, 8) : 0;
+                  return (
+                    <div key={s.label} className="flex items-center gap-3">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                        <circle cx="8" cy="8" r="7" stroke={s.items.length > 0 ? "#1D6B5B" : "#D2D3D6"} strokeWidth="1.5" fill={s.items.length > 0 ? "#1D6B5B" : "none"} fillOpacity={s.items.length > 0 ? 0.08 : 0}/>
+                        <text x="8" y="11" textAnchor="middle" fontSize="8" fontWeight="600" fill={s.items.length > 0 ? "#1D6B5B" : "#9CA0AB"}>{s.label[0]}</text>
+                      </svg>
+                      <span className="w-24 shrink-0 text-[12px]" style={{ color: "#1D2024" }}>{s.label}</span>
+                      <div className="flex-1">
+                        {s.items.length > 0 ? (
+                          <div className="h-2 overflow-hidden rounded-full" style={{ background: "#E8E8EA" }}>
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#1D6B5B" }} />
+                          </div>
+                        ) : (
+                          <div className="h-2 rounded-full" style={{ background: "#E8E8EA" }} />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ) : (
-              <div className="rounded-md px-4 py-3" style={{ background: "#F8F8F9", border: "1px solid #E5E5E8" }}>
-                <p className="text-[11px]" style={{ color: "#9CA0AB" }}>No items on agenda yet</p>
-              </div>
-            )}
+            </div>
           </div>
 
           {/* Action Items */}
-          <div className="rounded-lg bg-white px-5 py-5" style={{ border: "1px solid #E5E5E8" }}>
-            <h2 className="mb-5 text-[12px] font-semibold" style={{ color: "#1D2024" }}>Action Items</h2>
-
-            {newItems.length === 0 && flagged.length === 0 && incompleteAgenda.length === 0 ? (
-              <div className="flex flex-col items-center py-10">
-                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full" style={{ background: "#F0FDF4" }}>
-                  <span className="text-[14px]" style={{ color: "#16A34A" }}>✓</span>
+          <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div className="flex items-center gap-2.5 px-4 py-3" style={{ background: "#1F2023", borderBottom: "1px solid #2E2F33" }}>
+              <span className="flex h-6 w-6 items-center justify-center rounded" style={{ background: "#2A2B2F" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5E6AD2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              </span>
+              <span className="text-[12px] font-semibold text-white">Action Items</span>
+            </div>
+            <div className="bg-white px-4 py-3">
+              {newItems.length === 0 && flagged.length === 0 && incompleteAgenda.length === 0 ? (
+                <div className="flex items-center gap-3 py-3">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                    <circle cx="8" cy="8" r="8" fill="#16A34A" opacity="0.12"/>
+                    <path d="M5 8l2 2 4-4" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="text-[12px]" style={{ color: "#6B6F76" }}>Nothing needs attention</span>
                 </div>
-                <p className="text-[12px] font-medium" style={{ color: "#6B6F76" }}>Nothing needs attention</p>
-              </div>
-            ) : (
-              <div className="space-y-0.5 overflow-y-auto" style={{ maxHeight: "240px" }}>
-                {newItems.slice(0, 3).map((e) => {
-                  const meta = e.item_type ? TYPE_META[e.item_type] : null;
-                  return (
-                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-[#F8F8F9]">
-                      <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded" style={{ background: "#EEF0FF", color: "#5E6AD2", fontSize: "9px", fontWeight: 700 }}>
-                        {meta?.short ?? "—"}
-                      </span>
+              ) : (
+                <div className="space-y-0.5">
+                  {newItems.slice(0, 3).map((e) => (
+                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-1 py-2 text-left transition-colors hover:bg-[#F8F8F9]">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                        <circle cx="8" cy="8" r="7" stroke="#5E6AD2" strokeWidth="1.5"/>
+                      </svg>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[12px]" style={{ color: "#1D2024" }}>{e.summary || e.email_subject}</p>
-                        <p className="text-[11px]" style={{ color: "#9CA0AB" }}>{e.department} · New</p>
                       </div>
                     </button>
-                  );
-                })}
-                {newItems.length > 3 && (
-                  <button onClick={() => onViewChange("review")} className="w-full rounded-md px-3 py-2 text-left text-[11px] font-medium transition-colors hover:bg-[#F8F8F9]" style={{ color: "#5E6AD2" }}>
-                    +{newItems.length - 3} more to review →
-                  </button>
-                )}
-                {flagged.slice(0, 2).map((e) => {
-                  const meta = e.item_type ? TYPE_META[e.item_type] : null;
-                  return (
-                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-[#F8F8F9]">
-                      <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded" style={{ background: "#FEF2F2", color: "#F2555A", fontSize: "9px", fontWeight: 700 }}>
-                        {meta?.short ?? "—"}
-                      </span>
+                  ))}
+                  {newItems.length > 3 && (
+                    <button onClick={() => onViewChange("review")} className="w-full rounded-md px-1 py-2 text-left text-[11px] font-medium transition-colors hover:bg-[#F8F8F9]" style={{ color: "#5E6AD2" }}>
+                      +{newItems.length - 3} more to review →
+                    </button>
+                  )}
+                  {flagged.slice(0, 2).map((e) => (
+                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-1 py-2 text-left transition-colors hover:bg-[#F8F8F9]">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                        <circle cx="8" cy="8" r="7" stroke="#F2555A" strokeWidth="1.5"/>
+                        <path d="M8 5v3M8 10.5v.5" stroke="#F2555A" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[12px]" style={{ color: "#1D2024" }}>{e.summary || e.email_subject}</p>
-                        <p className="text-[11px]" style={{ color: "#F2555A" }}>{e.department} · Needs Info</p>
                       </div>
                     </button>
-                  );
-                })}
-                {incompleteAgenda.slice(0, 2).map((e) => {
-                  const meta = e.item_type ? TYPE_META[e.item_type] : null;
-                  const c = parseJson<CompletenessCheck>(e.completeness, {
-                    needs_cfo_certification: false, needs_attorney_review: false,
-                    missing_block_lot: false, missing_statutory_citation: false, notes: [],
-                  });
-                  const issues = completenessIssues(c);
-                  return (
-                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-[#F8F8F9]">
-                      <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded" style={{ background: "#FFF8F0", color: "#B45309", fontSize: "9px", fontWeight: 700 }}>
-                        {meta?.short ?? "—"}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[12px]" style={{ color: "#1D2024" }}>{e.summary || e.email_subject}</p>
-                        <p className="text-[11px]" style={{ color: "#B45309" }}>On Agenda · {issues.join(", ")}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                  ))}
+                  {incompleteAgenda.slice(0, 2).map((e) => {
+                    const c = parseJson<CompletenessCheck>(e.completeness, {
+                      needs_cfo_certification: false, needs_attorney_review: false,
+                      missing_block_lot: false, missing_statutory_citation: false, notes: [],
+                    });
+                    const issues = completenessIssues(c);
+                    return (
+                      <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-1 py-2 text-left transition-colors hover:bg-[#F8F8F9]">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                          <circle cx="8" cy="8" r="7" stroke="#B45309" strokeWidth="1.5"/>
+                          <path d="M8 5v3M8 10.5v.5" stroke="#B45309" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[12px]" style={{ color: "#1D2024" }}>{e.summary || e.email_subject}</p>
+                          <p className="text-[10px]" style={{ color: "#B45309" }}>{issues.join(", ")}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Bottom row */}
         <div className="grid grid-cols-2 gap-4">
           {/* Department Breakdown */}
-          <div className="rounded-lg bg-white px-5 py-5" style={{ border: "1px solid #E5E5E8" }}>
-            <h2 className="mb-5 text-[12px] font-semibold" style={{ color: "#1D2024" }}>By Department</h2>
-            {deptBreakdown.length === 0 ? (
-              <p className="py-6 text-center text-[11px]" style={{ color: "#9CA0AB" }}>No items yet</p>
-            ) : (
-              <div className="space-y-2.5">
-                {deptBreakdown.slice(0, 8).map(([dept, counts]) => (
-                  <div key={dept} className="flex items-center justify-between gap-3">
-                    <span className="min-w-0 truncate text-[12px]" style={{ color: "#6B6F76" }}>{dept}</span>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {counts.new_ > 0 && (
-                        <span className="rounded px-1.5 py-0.5 text-[10px] tabular-nums font-medium" style={{ background: "#EEF0FF", color: "#5E6AD2" }}>{counts.new_}</span>
+          <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div className="flex items-center gap-2.5 px-4 py-3" style={{ background: "#1F2023", borderBottom: "1px solid #2E2F33" }}>
+              <span className="flex h-6 w-6 items-center justify-center rounded" style={{ background: "#2A2B2F" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E59500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+              </span>
+              <span className="text-[12px] font-semibold text-white">By Department</span>
+            </div>
+            <div className="bg-white px-4 py-3">
+              {deptBreakdown.length === 0 ? (
+                <p className="py-4 text-center text-[11px]" style={{ color: "#9CA0AB" }}>No items yet</p>
+              ) : (
+                <div className="space-y-0.5">
+                  {deptBreakdown.slice(0, 8).map(([dept, counts]) => (
+                    <div key={dept} className="flex items-center gap-3 py-1.5">
+                      {counts.flagged > 0 ? (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                          <circle cx="8" cy="8" r="7" stroke="#F2555A" strokeWidth="1.5"/>
+                          <path d="M8 5v3M8 10.5v.5" stroke="#F2555A" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                      ) : counts.new_ > 0 ? (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                          <circle cx="8" cy="8" r="7" stroke="#5E6AD2" strokeWidth="1.5"/>
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                          <circle cx="8" cy="8" r="8" fill="#16A34A" opacity="0.12"/>
+                          <path d="M5 8l2 2 4-4" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
                       )}
-                      {counts.accepted > 0 && (
-                        <span className="rounded px-1.5 py-0.5 text-[10px] tabular-nums font-medium" style={{ background: "#E8FAFE", color: "#0E8FA0" }}>{counts.accepted}</span>
-                      )}
-                      {counts.flagged > 0 && (
-                        <span className="rounded px-1.5 py-0.5 text-[10px] tabular-nums font-medium" style={{ background: "#FEF2F2", color: "#F2555A" }}>{counts.flagged}</span>
-                      )}
-                      <span className="w-5 text-right text-[11px] tabular-nums" style={{ color: "#D2D3D6" }}>{counts.total}</span>
+                      <span className="min-w-0 flex-1 truncate text-[12px]" style={{ color: "#1D2024" }}>{dept}</span>
+                      <span className="text-[11px] tabular-nums" style={{ color: "#9CA0AB" }}>{counts.total}</span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Recent Activity */}
-          <div className="rounded-lg bg-white px-5 py-5" style={{ border: "1px solid #E5E5E8" }}>
-            <h2 className="mb-5 text-[12px] font-semibold" style={{ color: "#1D2024" }}>Recent Items</h2>
-            {recent.length === 0 ? (
-              <p className="py-6 text-center text-[11px]" style={{ color: "#9CA0AB" }}>No items yet</p>
-            ) : (
-              <div className="space-y-0.5">
-                {recent.map((e) => {
-                  const meta = e.item_type ? TYPE_META[e.item_type] : null;
-                  return (
-                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-[#F8F8F9]">
-                      <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded text-[9px] font-bold" style={{ background: "#F0F0F2", color: "#9CA0AB" }}>
-                        {meta?.short ?? "—"}
-                      </span>
+          <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div className="flex items-center gap-2.5 px-4 py-3" style={{ background: "#1F2023", borderBottom: "1px solid #2E2F33" }}>
+              <span className="flex h-6 w-6 items-center justify-center rounded" style={{ background: "#2A2B2F" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA0AB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+              </span>
+              <span className="text-[12px] font-semibold text-white">Recent Items</span>
+            </div>
+            <div className="bg-white px-4 py-3">
+              {recent.length === 0 ? (
+                <p className="py-4 text-center text-[11px]" style={{ color: "#9CA0AB" }}>No items yet</p>
+              ) : (
+                <div className="space-y-0.5">
+                  {recent.map((e) => (
+                    <button key={e.id} onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3 rounded-md px-1 py-2 text-left transition-colors hover:bg-[#F8F8F9]">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                        <circle cx="8" cy="8" r="8" fill="#16A34A" opacity="0.12"/>
+                        <path d="M5 8l2 2 4-4" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[12px]" style={{ color: "#1D2024" }}>{e.summary || e.email_subject}</p>
-                        <p className="text-[11px]" style={{ color: "#9CA0AB" }}>{e.department} · {shortDate(e.created_at)}</p>
+                        <p className="text-[10px]" style={{ color: "#9CA0AB" }}>{e.department} · {shortDate(e.created_at)}</p>
                       </div>
                     </button>
-                  );
-                })}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -579,11 +622,9 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
   const [deptsOpen, setDeptsOpen] = useState(true);
   const navItems = [
     { id: "command", label: "Command Center", count: 0 },
-    { id: "review", label: "Review", count: stats?.new_count ?? 0 },
-    { id: "agenda", label: "Agenda", count: stats?.accepted ?? 0 },
+    { id: "items", label: "Agenda Tracker", count: stats?.total ?? 0 },
     { id: "live_agenda", label: "Live Agenda", count: stats?.accepted ?? 0 },
     { id: "ordinances", label: "Ordinances", count: 0 },
-    { id: "all", label: "All Items", count: stats?.total ?? 0 },
   ];
 
   return (
@@ -620,7 +661,6 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
           </button>
         )}
 
-        <p className="sb-section-label mb-2 mt-5 px-2.5">Pages</p>
         <a href="/meetings" className="sb-nav">Meeting Packets</a>
 
         <button
@@ -1588,43 +1628,37 @@ function OrdinancesView({ onSelect }: { onSelect: (id: number) => void }) {
                       </div>
                     </div>
 
-                    {/* Mini progress bar — collapsed view */}
-                    {!isOpen && ord.tracking && (
-                      <div className="mt-3 flex items-center gap-1">
-                        {ORDINANCE_STAGES.map((s, i) => {
-                          const done = stage.idx > i || (stage.idx === i && stage.label !== "Draft");
-                          const current = stage.idx === i;
-                          return (
-                            <div key={s.key} className="flex items-center gap-1">
-                              <div
-                                className="h-1.5 w-8 rounded-full transition-colors"
-                                style={{
-                                  background: done ? stage.color : current ? `${stage.color}40` : "#E5E5E8",
-                                }}
-                                title={s.label}
-                              />
-                            </div>
-                          );
-                        })}
-                        {/* Key dates inline */}
-                        <div className="ml-3 flex items-center gap-3 text-[10px]" style={{ color: "#9CA0AB" }}>
-                          {ord.tracking?.hearing_date && (
-                            <span>
-                              Hearing {fmtDate(ord.tracking.hearing_date)}{" "}
-                              {new Date(ord.tracking.hearing_date + "T23:59:59") >= new Date() && (
-                                <span style={{ color: "#E59500" }}>({daysRelative(ord.tracking.hearing_date)})</span>
-                              )}
-                            </span>
-                          )}
-                          {ord.tracking?.effective_date && (
-                            <span>
-                              Effective {fmtDate(ord.tracking.effective_date)}{" "}
-                              {new Date(ord.tracking.effective_date + "T23:59:59") >= new Date() && (
-                                <span style={{ color: "#26B5CE" }}>({daysRelative(ord.tracking.effective_date)})</span>
-                              )}
-                            </span>
-                          )}
+                    {/* Progress — collapsed view */}
+                    {!isOpen && (
+                      <div className="mt-2.5 flex items-center gap-3">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: "#E5E5E8", maxWidth: 200 }}>
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${Math.max(stage.idx, 0) / ORDINANCE_STAGES.length * 100}%`,
+                              background: stage.color,
+                            }}
+                          />
                         </div>
+                        <span className="shrink-0 text-[10px] tabular-nums" style={{ color: "#9CA0AB" }}>
+                          {Math.max(stage.idx, 0)}/{ORDINANCE_STAGES.length}
+                        </span>
+                        {ord.tracking?.hearing_date && !ord.tracking?.adoption_date && (
+                          <span className="text-[10px]" style={{ color: "#9CA0AB" }}>
+                            Hearing {fmtDate(ord.tracking.hearing_date)}{" "}
+                            {new Date(ord.tracking.hearing_date + "T23:59:59") >= new Date() && (
+                              <span style={{ color: "#E59500" }}>({daysRelative(ord.tracking.hearing_date)})</span>
+                            )}
+                          </span>
+                        )}
+                        {ord.tracking?.effective_date && (
+                          <span className="text-[10px]" style={{ color: "#9CA0AB" }}>
+                            Effective {fmtDate(ord.tracking.effective_date)}{" "}
+                            {new Date(ord.tracking.effective_date + "T23:59:59") >= new Date() && (
+                              <span style={{ color: "#26B5CE" }}>({daysRelative(ord.tracking.effective_date)})</span>
+                            )}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1700,6 +1734,18 @@ function OrdTrackingForm({
   const fieldStyle = "w-full rounded border px-2.5 py-1.5 text-[12px] outline-none transition-colors focus:border-[#5E6AD2]";
   const labelStyle = "mb-1 block text-[11px] font-medium";
 
+  // Determine which stages are done for the overview
+  const stageDone = [
+    !!form.introduction_date,
+    !!form.pub_intro_date,
+    !!form.bulletin_posted_date,
+    !!form.hearing_date,
+    !!form.adoption_date,
+    !!form.pub_final_date,
+    !!form.effective_date,
+    !!form.website_posted_date,
+  ];
+
   return (
     <div className="space-y-6">
       {/* Ordinance Number */}
@@ -1718,7 +1764,9 @@ function OrdTrackingForm({
       {/* Stage 1: Introduction */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#5E6AD2" }}>1</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: stageDone[0] ? "#16A34A" : "#5E6AD2" }}>
+            {stageDone[0] ? "✓" : "1"}
+          </span>
           <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Introduction / First Reading</h4>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -1738,7 +1786,9 @@ function OrdTrackingForm({
       {/* Stage 2: Publication after introduction */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#5E6AD2" }}>2</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: stageDone[1] ? "#16A34A" : "#5E6AD2" }}>
+            {stageDone[1] ? "✓" : "2"}
+          </span>
           <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Publication After Introduction</h4>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -1758,7 +1808,9 @@ function OrdTrackingForm({
       {/* Stage 3: Bulletin board */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#5E6AD2" }}>3</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: stageDone[2] ? "#16A34A" : "#5E6AD2" }}>
+            {stageDone[2] ? "✓" : "3"}
+          </span>
           <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Bulletin Board Posting</h4>
         </div>
         <div className="max-w-xs">
@@ -1771,7 +1823,9 @@ function OrdTrackingForm({
       {/* Stage 4: Public hearing */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#E59500" }}>4</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: stageDone[3] ? "#16A34A" : "#E59500" }}>
+            {stageDone[3] ? "✓" : "4"}
+          </span>
           <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Public Hearing / Second Reading</h4>
           {hearingTooSoon && (
             <span className="rounded px-2 py-0.5 text-[10px] font-medium" style={{ background: "#FEF2F2", color: "#F2555A" }}>
@@ -1809,7 +1863,9 @@ function OrdTrackingForm({
       {/* Stage 5: Adoption */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#26B5CE" }}>5</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: stageDone[4] ? "#16A34A" : "#26B5CE" }}>
+            {stageDone[4] ? "✓" : "5"}
+          </span>
           <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Final Passage (Adoption)</h4>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -1834,7 +1890,9 @@ function OrdTrackingForm({
       {/* Stage 6: Publication after adoption */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#26B5CE" }}>6</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: stageDone[5] ? "#16A34A" : "#26B5CE" }}>
+            {stageDone[5] ? "✓" : "6"}
+          </span>
           <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Publication After Adoption</h4>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -1854,7 +1912,9 @@ function OrdTrackingForm({
       {/* Stage 7: Effective date */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#16A34A" }}>7</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: stageDone[6] ? "#16A34A" : "#9CA0AB" }}>
+            {stageDone[6] ? "✓" : "7"}
+          </span>
           <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Effective Date</h4>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -1882,7 +1942,9 @@ function OrdTrackingForm({
       {/* Stage 8: Website posting */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#16A34A" }}>8</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: stageDone[7] ? "#16A34A" : "#9CA0AB" }}>
+            {stageDone[7] ? "✓" : "8"}
+          </span>
           <h4 className="text-[12px] font-semibold" style={{ color: "#1D2024" }}>Website Posting</h4>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -2470,7 +2532,24 @@ export default function DashboardPage() {
   const [scanMsg, setScanMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("command");
+  const [itemsFilter, setItemsFilter] = useState<"all" | "review" | "accepted" | "needs_info">("all");
   const [deptFilter, setDeptFilter] = useState<string | null>(null);
+
+  // Handle view changes — map old view names to items + filter
+  const handleViewChange = useCallback((v: string) => {
+    if (v === "review") {
+      setView("items");
+      setItemsFilter("review");
+    } else if (v === "agenda") {
+      setView("items");
+      setItemsFilter("accepted");
+    } else if (v === "all") {
+      setView("items");
+      setItemsFilter("all");
+    } else {
+      setView(v);
+    }
+  }, []);
 
   const fetch_ = useCallback(async () => {
     try {
@@ -2519,9 +2598,9 @@ export default function DashboardPage() {
   const needsInfo = useMemo(() => entries.filter((e) => e.status === "needs_info"), [entries]);
   const accepted = useMemo(() => entries.filter((e) => e.status === "accepted" || e.status === "on_agenda"), [entries]);
 
-  const viewFiltered = view === "review" ? reviewQueue
-    : view === "agenda" ? accepted
-    : view === "needs_info" ? needsInfo
+  const viewFiltered = itemsFilter === "review" ? reviewQueue
+    : itemsFilter === "accepted" ? accepted
+    : itemsFilter === "needs_info" ? needsInfo
     : entries;
 
   const display = deptFilter
@@ -2530,7 +2609,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#F8F8F9" }}>
-      <Sidebar view={view} onViewChange={setView} stats={stats} deptFilter={deptFilter} onDeptFilter={setDeptFilter} />
+      <Sidebar view={view} onViewChange={handleViewChange} stats={stats} deptFilter={deptFilter} onDeptFilter={setDeptFilter} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar stats={stats} scanning={scanning} scanMessage={scanMsg} onScan={doScan} />
@@ -2556,7 +2635,7 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : view === "command" ? (
-          <CommandCenter entries={entries} stats={stats} onViewChange={setView} onSelect={(id) => setSelectedId(id)} />
+          <CommandCenter entries={entries} stats={stats} onViewChange={handleViewChange} onSelect={(id) => setSelectedId(id)} />
         ) : view === "live_agenda" ? (
           <LiveAgenda entries={entries} onAction={doAction} onRefresh={fetch_} />
         ) : view === "ordinances" ? (
@@ -2567,9 +2646,30 @@ export default function DashboardPage() {
               <div className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/90 px-5 py-3 backdrop-blur-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-semibold text-slate-800">
-                      {view === "review" ? "Review Queue" : view === "agenda" ? "Accepted Items" : view === "needs_info" ? "Needs Information" : "All Items"}
-                    </h2>
+                    <h2 className="text-sm font-semibold text-slate-800">Agenda Tracker</h2>
+                    {/* Filter tabs */}
+                    <div className="flex gap-0.5 rounded-md p-0.5" style={{ background: "#F0F0F2" }}>
+                      {([
+                        { key: "all", label: "All", count: entries.length },
+                        { key: "review", label: "Review", count: reviewQueue.length },
+                        { key: "accepted", label: "Accepted", count: accepted.length },
+                        { key: "needs_info", label: "Needs Info", count: needsInfo.length },
+                      ] as const).map((tab) => (
+                        <button
+                          key={tab.key}
+                          onClick={() => setItemsFilter(tab.key)}
+                          className="rounded px-2.5 py-1 text-[11px] font-medium transition-all"
+                          style={{
+                            background: itemsFilter === tab.key ? "#fff" : "transparent",
+                            color: itemsFilter === tab.key ? "#1D2024" : "#6B6F76",
+                            boxShadow: itemsFilter === tab.key ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                          }}
+                        >
+                          {tab.label}
+                          <span className="ml-1 tabular-nums" style={{ color: itemsFilter === tab.key ? "#9CA0AB" : "#9CA0AB" }}>{tab.count}</span>
+                        </button>
+                      ))}
+                    </div>
                     {deptFilter && (
                       <button
                         onClick={() => setDeptFilter(null)}
@@ -2584,13 +2684,18 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {display.length === 0 && view === "review" ? (
+              {display.length === 0 && itemsFilter === "review" ? (
                 <div className="flex flex-col items-center py-20">
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
                     <span className="text-sm text-emerald-500">✓</span>
                   </div>
                   <p className="text-sm font-medium text-slate-700">All caught up</p>
                   <p className="mt-1 text-[11px] text-slate-400">No items waiting for review</p>
+                </div>
+              ) : display.length === 0 ? (
+                <div className="flex flex-col items-center py-20">
+                  <p className="text-sm font-medium text-slate-700">No items</p>
+                  <p className="mt-1 text-[11px] text-slate-400">No items match this filter</p>
                 </div>
               ) : (
                 <div className="bg-white">
