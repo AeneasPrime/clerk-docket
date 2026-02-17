@@ -24,6 +24,8 @@ services:
         sync: false
       - key: LOGIN_PASSWORD
         sync: false
+      - key: INGEST_API_KEY
+        sync: false
     disk:
       name: docket-data
       mountPath: /data
