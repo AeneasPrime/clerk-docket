@@ -428,7 +428,7 @@ function getBiweeklyMondays(startDate: Date, endDate: Date): string[] {
 
 export function ensureMeetingsGenerated(): void {
   const now = new Date();
-  // 1 month back, 3 months forward
+  // 1 month back, 3 months forward — older meetings are only kept if they have data
   const start = new Date(now);
   start.setMonth(start.getMonth() - 1);
   start.setUTCHours(0, 0, 0, 0);
@@ -571,6 +571,29 @@ export function getMeetingsNeedingMinutes(): Meeting[] {
   `).all(today) as Meeting[];
 }
 
+/** Find all past meetings with video URLs that have no minutes yet (no agenda item requirement) */
+export function getPastMeetingsWithoutMinutes(): Meeting[] {
+  const today = new Date().toISOString().split("T")[0];
+  return db.prepare(`
+    SELECT * FROM meetings
+    WHERE video_url IS NOT NULL
+      AND (minutes IS NULL OR minutes = '')
+      AND meeting_date <= ?
+    ORDER BY meeting_date ASC
+  `).all(today) as Meeting[];
+}
+
+/** Find all past meetings that have no video URL yet */
+export function getPastMeetingsWithoutVideo(): Meeting[] {
+  const today = new Date().toISOString().split("T")[0];
+  return db.prepare(`
+    SELECT * FROM meetings
+    WHERE (video_url IS NULL OR video_url = '')
+      AND meeting_date <= ?
+    ORDER BY meeting_date ASC
+  `).all(today) as Meeting[];
+}
+
 // --- Ordinance Lifecycle Helpers ---
 
 /** Find the next regular meeting that is at least `minDaysAfter` days after `afterDate`. */
@@ -681,7 +704,7 @@ function seedDemoData() {
 
   const rows: SeedRow[] = [
     // === FEB 9, 2026 WORK SESSION ===
-    ["DeRoberts, Anthony <deroberts@edisonnj.org>", "Report of Disbursements through February 4, 2026", "2026-02-04",
+    ["Marchetti, Frank <marchetti@edisonnj.org>", "Report of Disbursements through February 4, 2026", "2026-02-04",
       "Report of Disbursements for the period ending February 4, 2026. Total disbursements: $4,287,341.16.", 1,
       "resolution_disbursement", "Finance/CFO", "Report of disbursements through February 4, 2026 totaling $4,287,341.16",
       { dollar_amounts: ["$4,287,341.16"] }, ["Disbursement_Report_020426.pdf"], "on_agenda", "2026-02-09"],
@@ -691,7 +714,7 @@ function seedDemoData() {
       "resolution_tax_refund", "Tax Collection", "Authorization of tax refund overpayments totaling $18,710.60 for 12 properties",
       { contract_amount: "$18,710.60" }, ["Tax_Refund_List_Feb2026.pdf"], "on_agenda", "2026-02-09"],
 
-    ["Alves-Viveiros, Maria <alves-viveiros@edisonnj.org>", "Resolution - Rio Supply Inc. Neptune Water Equipment and Spare Parts", "2026-02-03",
+    ["Santos-Rivera, Elena <santos-rivera@edisonnj.org>", "Resolution - Rio Supply Inc. Neptune Water Equipment and Spare Parts", "2026-02-03",
       "Contract with Rio Supply Inc. for Neptune Technology water equipment and spare parts. Not to exceed $135,000.00.", 1,
       "resolution_bid_award", "Water/Sewer Utility", "Contract award to Rio Supply Inc. for Neptune Technology water equipment, NTE $135,000",
       { vendor_name: "Rio Supply Inc.", contract_amount: "$135,000.00" }, ["Rio_Supply_Quote_2026.pdf"], "on_agenda", "2026-02-09"],
@@ -702,7 +725,7 @@ function seedDemoData() {
       { vendor_name: "LiRo Engineers, Inc.", vendor_address: "333 Thornall Street, Edison, NJ 08837", contract_amount: "$317,190.00", statutory_citation: "N.J.S.A. 40A:11-5(1)(a)(i)" },
       ["LiRo_Proposal_Sewer_Ph2.pdf"], "on_agenda", "2026-02-09"],
 
-    ["Diehl, Robert <diehl@edisonnj.org>", "Garden State Fireworks - Lunar New Year Celebration Feb 21, 2026", "2026-02-01",
+    ["Fischer, James <fischer@edisonnj.org>", "Garden State Fireworks - Lunar New Year Celebration Feb 21, 2026", "2026-02-01",
       "Application from Garden State Fireworks for Lunar New Year celebration. Non-aerial fireworks and drone show at 450 Division Street.", 1,
       "other", "Administration", "Authorization for Garden State Fireworks for Lunar New Year celebration on Feb 21 at 450 Division St",
       { vendor_name: "Garden State Fireworks, Inc.", block_lot: "Block 82.14, Lot 3.22" },
@@ -733,13 +756,13 @@ function seedDemoData() {
       ["Ford_Interceptor_Quote.pdf", "ESCNJ_Authorization.pdf"], "on_agenda", "2026-02-09"],
 
     // === FEB 11, 2026 REGULAR MEETING ===
-    ["Rainone, William <rainone@edisonnj.org>", "Ordinance - Chapter 7 Traffic - Electric Scooter Regulations", "2026-01-28",
+    ["Caruso, Thomas <caruso@edisonnj.org>", "Ordinance - Chapter 7 Traffic - Electric Scooter Regulations", "2026-01-28",
       "Proposed ordinance creating Subchapter 7-44 Electric Scooter Regulations. Helmet requirements, lighting, penalties.", 1,
       "ordinance_new", "Law", "New ordinance creating Subchapter 7-44 regulating electric scooter operation",
       { statutory_citation: "N.J.S.A. 39:4-14.16 et seq." },
       ["O.2270-2026_Electric_Scooter.pdf"], "on_agenda", "2026-02-11"],
 
-    ["Rainone, William <rainone@edisonnj.org>", "Ordinance Amending Chapter 23 - Adopt an Area Program Guidelines", "2026-01-29",
+    ["Caruso, Thomas <caruso@edisonnj.org>", "Ordinance Amending Chapter 23 - Adopt an Area Program Guidelines", "2026-01-29",
       "Proposed ordinance amending Chapter 23 Adopt an Area Program to update guidelines and expand eligibility.", 1,
       "ordinance_amendment", "Law", "Amendment to Chapter 23 Adopt an Area Program — updated guidelines, expanded eligibility",
       {}, ["O.2271-2026_Adopt_Area.pdf"], "on_agenda", "2026-02-11"],
@@ -756,7 +779,7 @@ function seedDemoData() {
       { contract_amount: "$474,850.00" },
       ["Plainfield_WaterMain_BidTab.pdf"], "on_agenda", "2026-02-11"],
 
-    ["Alves-Viveiros, Maria <alves-viveiros@edisonnj.org>", "Emergency Water Main Repair Services - B&W Construction Co.", "2026-02-03",
+    ["Santos-Rivera, Elena <santos-rivera@edisonnj.org>", "Emergency Water Main Repair Services - B&W Construction Co.", "2026-02-03",
       "Emergency water main repair services. Bid No. 25-10-23. B&W Construction secondary vendor. NTE $2,000,000/year.", 1,
       "resolution_bid_award", "Water/Sewer Utility", "Emergency water main repair services with B&W Construction, NTE $2M/year",
       { vendor_name: "B&W Construction Co. of NJ, Inc.", contract_amount: "$2,000,000.00/year", bid_number: "Public Bid No. 25-10-23" },
@@ -781,34 +804,34 @@ function seedDemoData() {
       ["Sewer_Refund_List_Feb2026.pdf"], "on_agenda", "2026-02-11"],
 
     // === JAN 12, 2026 WORK SESSION ===
-    ["Diehl, Robert <diehl@edisonnj.org>", "Administrative Agenda - Mayor Joshi Appointments January 2026", "2026-01-08",
+    ["Fischer, James <fischer@edisonnj.org>", "Administrative Agenda - Mayor Kumar Appointments January 2026", "2026-01-08",
       "Mayor's appointments and administrative items a. through m. for the January 12 worksession.", 1,
-      "other", "Administration", "Mayor Joshi administrative agenda items a. through m. — board and commission appointments",
+      "other", "Administration", "Mayor Kumar administrative agenda items a. through m. — board and commission appointments",
       {}, ["Admin_Agenda_011226.pdf"], "on_agenda", "2026-01-12"],
 
-    ["Rainone, William <rainone@edisonnj.org>", "Ordinance Amending §39-12.15 Technical Review Committee", "2026-01-07",
+    ["Caruso, Thomas <caruso@edisonnj.org>", "Ordinance Amending §39-12.15 Technical Review Committee", "2026-01-07",
       "Amendment to Chapter 39 Land Use, §39-12.15 Technical Review Committee to streamline application review.", 1,
       "ordinance_amendment", "Law", "Amendment to Land Use code §39-12.15 redesigning Technical Review Committee",
       { statutory_citation: "N.J.S.A. 40:55D-1 et seq." },
       ["Ordinance_TechReview.pdf"], "on_agenda", "2026-01-12"],
 
-    ["Rainone, William <rainone@edisonnj.org>", "Ordinance Amending Article V - Boards, Commissions, Committees", "2026-01-07",
+    ["Caruso, Thomas <caruso@edisonnj.org>", "Ordinance Amending Article V - Boards, Commissions, Committees", "2026-01-07",
       "Amendment to Article V of Chapter 2 Administration updating boards, commissions, committees structure.", 1,
       "ordinance_amendment", "Law", "Amendment to Chapter 2 Administration — boards, commissions organizational structure",
       {}, ["Ordinance_BoardsCommissions.pdf"], "on_agenda", "2026-01-12"],
 
-    ["Alves-Viveiros, Maria <alves-viveiros@edisonnj.org>", "Business Administrator Items a. through u. - January 12", "2026-01-08",
+    ["Santos-Rivera, Elena <santos-rivera@edisonnj.org>", "Business Administrator Items a. through u. - January 12", "2026-01-08",
       "Business Administrator's items a. through u. including contracts, change orders, and authorizations.", 1,
       "other", "Administration", "Business Administrator agenda items a. through u. — contracts and authorizations",
       {}, ["BA_Items_011226.pdf"], "on_agenda", "2026-01-12"],
 
-    ["Council President <coyle@edisonnj.org>", "Presentation - 250th Anniversary of Our Country", "2026-01-06",
-      "America 250th Anniversary presentation. Council President Coyle will read statement re: Edison's Revolutionary War heritage.", 1,
-      "discussion_item", "Administration", "Council President Coyle presentation on America 250th Anniversary",
+    ["Council President <burke@edisonnj.org>", "Presentation - 250th Anniversary of Our Country", "2026-01-06",
+      "America 250th Anniversary presentation. Council President Burke will read statement re: Edison's Revolutionary War heritage.", 1,
+      "discussion_item", "Administration", "Council President Burke presentation on America 250th Anniversary",
       {}, ["America250_Statement.pdf"], "on_agenda", "2026-01-12"],
 
     // === JAN 14, 2026 REGULAR MEETING ===
-    ["DeRoberts, Anthony <deroberts@edisonnj.org>", "Report of Disbursements through January 8, 2026", "2026-01-09",
+    ["Marchetti, Frank <marchetti@edisonnj.org>", "Report of Disbursements through January 8, 2026", "2026-01-09",
       "Report of Disbursements for the period ending January 8, 2026.", 1,
       "resolution_disbursement", "Finance/CFO", "Report of disbursements through January 8, 2026",
       {}, ["Disbursement_Report_010826.pdf"], "on_agenda", "2026-01-14"],
@@ -844,7 +867,7 @@ function seedDemoData() {
       ["Minuteman_Press_Quote.pdf"], "on_agenda", "2026-01-14"],
 
     // === JAN 28, 2026 COMBINED MEETING ===
-    ["Alves-Viveiros, Maria <alves-viveiros@edisonnj.org>", "Office Basics Inc. - Ink, Toner, and Office Printing Supplies", "2026-01-22",
+    ["Santos-Rivera, Elena <santos-rivera@edisonnj.org>", "Office Basics Inc. - Ink, Toner, and Office Printing Supplies", "2026-01-22",
       "2-year contract with Office Basics Inc. for office printing supplies. Annual: $7,524.48 ($15,048.96 total).", 1,
       "resolution_bid_award", "Administration", "2-year contract with Office Basics for ink/toner/supplies, NTE $15,048.96",
       { vendor_name: "Office Basics Inc.", contract_amount: "$15,048.96" },
@@ -856,12 +879,12 @@ function seedDemoData() {
       { vendor_name: "Atlantic Salt Inc.", contract_amount: "$79.00/ton", state_contract_number: "Middlesex County Co-op" },
       ["AtlanticSalt_Quote.pdf"], "on_agenda", "2026-01-28"],
 
-    ["Russomanno, Cheryl <clerk@edisonnj.org>", "Approval of 2026 Council Meeting Schedule", "2026-01-21",
+    ["Benedetto, Patricia <clerk@edisonnj.org>", "Approval of 2026 Council Meeting Schedule", "2026-01-21",
       "Proposed 2026 Municipal Council meeting schedule for approval. Biweekly worksessions and regular meetings.", 1,
       "other", "Administration", "Approval of 2026 Municipal Council meeting schedule",
       {}, ["2026_Meeting_Schedule.pdf"], "on_agenda", "2026-01-28"],
 
-    ["Vallejo, Carlos <vallejo@edisonnj.org>", "Debt Service Appropriations for 2026", "2026-01-22",
+    ["Morales, Rafael <morales@edisonnj.org>", "Debt Service Appropriations for 2026", "2026-01-22",
       "Authorization of debt service appropriations for 2026 per N.J.S.A. 40A:4-53.", 1,
       "other", "Finance/CFO", "Authorization of 2026 debt service appropriations for municipal bonds",
       { statutory_citation: "N.J.S.A. 40A:4-53" },
@@ -874,12 +897,12 @@ function seedDemoData() {
       ["Capitol_Indemnity_Bond.pdf", "Site_Inspection_Report.pdf"], "on_agenda", "2026-01-28"],
 
     // === UNASSIGNED (in queue) ===
-    ["Rainone, William <rainone@edisonnj.org>", "Ordinance Amending Chapter 25 Trees - Running Bamboo Prohibition", "2026-02-05",
+    ["Caruso, Thomas <caruso@edisonnj.org>", "Ordinance Amending Chapter 25 Trees - Running Bamboo Prohibition", "2026-02-05",
       "Proposed ordinance to prohibit planting and spread of running bamboo in the Township.", 1,
       "ordinance_amendment", "Law", "Amendment to Chapter 25 Trees — prohibiting running bamboo",
       {}, ["Ordinance_Bamboo.pdf"], "reviewed", null],
 
-    ["Vallejo, Carlos <vallejo@edisonnj.org>", "Ordinance to Exceed Municipal Budget Appropriation Limits - Cap Bank", "2026-02-06",
+    ["Morales, Rafael <morales@edisonnj.org>", "Ordinance to Exceed Municipal Budget Appropriation Limits - Cap Bank", "2026-02-06",
       "Annual ordinance to exceed budget appropriation limits and establish cap bank per N.J.S.A. 40A:4-45.14.", 1,
       "ordinance_new", "Finance/CFO", "Annual cap bank ordinance — must be adopted before 2026 budget introduction",
       { statutory_citation: "N.J.S.A. 40A:4-45.14" },
@@ -897,7 +920,7 @@ function seedDemoData() {
       { escrow_amount: "$4,800.00", block_lot: "111 Livingston Avenue" },
       ["Street_Opening_Application.pdf"], "new", null],
 
-    ["Diehl, Robert <diehl@edisonnj.org>", "Blue SAGE Grant Transfer - Edison Memorial Tower Corporation", "2026-02-05",
+    ["Fischer, James <fischer@edisonnj.org>", "Blue SAGE Grant Transfer - Edison Memorial Tower Corporation", "2026-02-05",
       "Transfer of 2023 Blue SAGE Grant from NJ Historical Commission. NTE $250,000 for Thomas Edison Center at Menlo Park.", 1,
       "resolution_grant", "Administration", "Transfer of $250,000 Blue SAGE Grant for Thomas Edison Center at Menlo Park",
       { contract_amount: "$250,000.00", vendor_name: "Edison Memorial Tower Corporation" },

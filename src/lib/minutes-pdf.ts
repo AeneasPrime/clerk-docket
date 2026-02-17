@@ -154,7 +154,7 @@ export function generateMinutesPDF(options: MinutesPDFOptions): PDFKit.PDFDocume
   }
 
   // --- Parse minutes into sections ---
-  const lines = minutes.split("\n");
+  const lines = minutes.replace(/\t/g, "    ").split("\n");
 
   // Find title block (everything before the first paragraph starting with "A Worksession" or "A Regular" or "A Combined")
   let titleEnd = 0;
@@ -283,7 +283,7 @@ export function generateMinutesPDF(options: MinutesPDFOptions): PDFKit.PDFDocume
   y += 4;
   doc.font(FONT_REG).fontSize(FONT_SIZE);
   doc.text(nameLinesParsed[0] || "Sam Joshi", sigLeftX, y, { width: sigLineWidth });
-  doc.text(nameLinesParsed[1] || "Cheryl Russomanno, RMC", sigRightX, y, { width: sigLineWidth });
+  doc.text(nameLinesParsed[1] || "Patricia Benedetto, RMC", sigRightX, y, { width: sigLineWidth });
 
   y += LINE_HEIGHT;
   doc.text(titleLinesParsed[0] || "Council President", sigLeftX, y, { width: sigLineWidth });

@@ -39,7 +39,7 @@ export async function syncVideosFromCablecast(): Promise<{
 
   try {
     const res = await fetch(
-      `${CABLECAST_API}?channel_id=1&page_size=50&order_by=date&order=desc`
+      `${CABLECAST_API}?channel_id=1&page_size=200&order_by=date&order=desc`
     );
 
     if (!res.ok) {

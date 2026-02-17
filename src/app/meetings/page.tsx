@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 // --- Types ---
 
@@ -37,35 +37,6 @@ interface MeetingWithAgenda extends Meeting {
 
 // --- Constants ---
 
-const TYPE_META: Record<string, { label: string; short: string }> = {
-  resolution_bid_award: { label: "Bid Award", short: "BID" },
-  resolution_professional_services: { label: "Professional Services", short: "PRO" },
-  resolution_state_contract: { label: "State Contract", short: "STC" },
-  resolution_tax_refund: { label: "Tax Refund", short: "TAX" },
-  resolution_tax_sale_redemption: { label: "Tax Sale Redemption", short: "TSR" },
-  resolution_bond_release: { label: "Bond Release", short: "BND" },
-  resolution_escrow_release: { label: "Escrow Release", short: "ESC" },
-  resolution_project_acceptance: { label: "Project Acceptance", short: "PRJ" },
-  resolution_license_renewal: { label: "License Renewal", short: "LIC" },
-  resolution_grant: { label: "Grant", short: "GRT" },
-  resolution_personnel: { label: "Personnel", short: "PER" },
-  resolution_surplus_sale: { label: "Surplus Sale", short: "SUR" },
-  resolution_fee_waiver: { label: "Fee Waiver", short: "FEE" },
-  resolution_disbursement: { label: "Disbursement", short: "DIS" },
-  ordinance_new: { label: "New Ordinance", short: "ORD" },
-  ordinance_amendment: { label: "Ordinance Amendment", short: "AMD" },
-  discussion_item: { label: "Discussion Item", short: "DSC" },
-  informational: { label: "Informational", short: "INF" },
-  other: { label: "Other", short: "OTH" },
-};
-
-const AGENDA_SECTIONS = [
-  { key: "resolutions", label: "Resolutions", types: ["resolution_bid_award", "resolution_professional_services", "resolution_state_contract", "resolution_tax_refund", "resolution_tax_sale_redemption", "resolution_bond_release", "resolution_escrow_release", "resolution_project_acceptance", "resolution_license_renewal", "resolution_grant", "resolution_personnel", "resolution_surplus_sale", "resolution_fee_waiver", "resolution_disbursement"] },
-  { key: "ordinances", label: "Ordinances", types: ["ordinance_new", "ordinance_amendment"] },
-  { key: "discussion", label: "Discussion", types: ["discussion_item"] },
-  { key: "other", label: "Other", types: ["informational", "other"] },
-];
-
 // --- Helpers ---
 
 function formatDate(dateStr: string): string {
@@ -97,6 +68,236 @@ function statusBadge(status: string) {
     >
       {s.label}
     </span>
+  );
+}
+
+/** Count [REVIEW: ...] markers in minutes text */
+function countReviewMarkers(text: string): number {
+  const matches = text.match(/\[REVIEW:[^\]]*\]/g);
+  return matches ? matches.length : 0;
+}
+
+/** Parse timestamp from review marker text — returns {display, seconds} or null */
+function parseReviewTimestamp(marker: string): { display: string; seconds: number } | null {
+  const match = marker.match(/@(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return null;
+  if (match[3]) {
+    // H:MM:SS
+    const h = parseInt(match[1]), m = parseInt(match[2]), s = parseInt(match[3]);
+    return { display: `${h}:${match[2]}:${match[3]}`, seconds: h * 3600 + m * 60 + s };
+  }
+  // MM:SS
+  const m = parseInt(match[1]), s = parseInt(match[2]);
+  return { display: `${match[1]}:${match[2]}`, seconds: m * 60 + s };
+}
+
+/** Strip the @timestamp from review marker display text */
+function stripTimestamp(marker: string): string {
+  return marker.replace(/\s*@\d{1,2}:\d{2}(?::\d{2})?\s*/, " ").replace(/\s+\]/, "]");
+}
+
+/** Render inline text with [REVIEW: ...] markers highlighted — clickable with timestamp */
+function ReviewText({ text, videoUrl }: { text: string; videoUrl?: string }) {
+  const parts = text.split(/(\[REVIEW:[^\]]*\])/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!/^\[REVIEW:[^\]]*\]$/.test(part)) return <span key={i}>{part}</span>;
+
+        const ts = parseReviewTimestamp(part);
+        const displayText = stripTimestamp(part);
+        const canLink = videoUrl;
+
+        return (
+          <span
+            key={i}
+            className="group/review inline-block relative rounded px-1 py-0.5 text-[11px] font-medium"
+            style={{
+              background: "rgba(245, 158, 11, 0.12)",
+              color: "#B45309",
+              border: "1px solid rgba(245, 158, 11, 0.25)",
+              cursor: canLink ? "pointer" : "default",
+            }}
+            onClick={canLink ? () => window.open(ts ? `${videoUrl}?seekto=${ts.seconds}` : videoUrl, "_blank") : undefined}
+          >
+            {displayText}
+            {canLink && (
+              <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/review:flex items-center gap-1 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-[10px] text-white shadow-lg">
+                {ts ? `▶ ${ts.display} — click to jump` : "▶ Click to open video"}
+                <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+/** Check if text is predominantly uppercase */
+function isAllCaps(text: string): boolean {
+  const letters = text.replace(/[^a-zA-Z]/g, "");
+  if (letters.length === 0) return false;
+  return letters.replace(/[^A-Z]/g, "").length / letters.length > 0.7;
+}
+
+/** Lines that render full-width (no section indent) in the PDF */
+function isFullWidthLine(text: string): boolean {
+  return (
+    text.startsWith("A Worksession") || text.startsWith("A Regular") || text.startsWith("A Combined") ||
+    text.startsWith("Present were") || text.startsWith("Also present") ||
+    text.startsWith("The Township Clerk advised") || text.startsWith("This meeting") ||
+    text.startsWith("http") || text.startsWith("On a motion") || text.startsWith("Hearing no further")
+  );
+}
+
+/** Render minutes as a print-preview document matching the PDF output */
+function MinutesDocument({ text, videoUrl }: { text: string; videoUrl?: string }) {
+  const lines = text.split("\n");
+
+  // Title block: everything before "A Worksession..." or "A Regular..."
+  let titleEnd = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (t.startsWith("A Worksession") || t.startsWith("A Regular") || t.startsWith("A Combined")) {
+      titleEnd = i;
+      break;
+    }
+  }
+  const titleLines = lines.slice(0, titleEnd).filter(l => l.trim());
+
+  // Signature block: find last line with underscores
+  let sigStart = lines.length;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].includes("___")) { sigStart = i; break; }
+  }
+  const bodyLines = lines.slice(titleEnd, sigStart);
+  const sigLines = lines.slice(sigStart);
+
+  // Track section state for indentation and bold logic
+  const sectionNumPattern = /^(\d+)\.\s+/;
+  let insideSection = false;
+  let inDiscussion = false;
+
+  const bodyElements: React.ReactNode[] = [];
+
+  for (let i = 0; i < bodyLines.length; i++) {
+    const trimmed = bodyLines[i].trim();
+
+    if (trimmed === "") {
+      bodyElements.push(<div key={`b${i}`} style={{ height: "11px" }} />);
+      continue;
+    }
+
+    // Track Discussion Items section
+    if (/^\d+\.\s+DISCUSSION/.test(trimmed)) inDiscussion = true;
+    else if (/^\d+\.\s+/.test(trimmed) && !trimmed.includes("DISCUSSION")) inDiscussion = false;
+
+    const sectionMatch = trimmed.match(sectionNumPattern);
+
+    if (sectionMatch) {
+      // Numbered section header — bold, number flush left + title indented
+      insideSection = true;
+      const numText = sectionMatch[0];
+      const rest = trimmed.slice(numText.length);
+      bodyElements.push(
+        <div key={`b${i}`} style={{ display: "flex", marginTop: "6px" }}>
+          <span style={{ fontWeight: 700, minWidth: "36px", flexShrink: 0 }}>{numText}</span>
+          <span style={{ fontWeight: 700 }}><ReviewText text={rest} videoUrl={videoUrl} /></span>
+        </div>
+      );
+    } else if (insideSection && !isFullWidthLine(trimmed)) {
+      // Indented content within a section
+      const bold = isAllCaps(trimmed) ||
+        (inDiscussion && (
+          trimmed.startsWith("Councilmember") || trimmed.startsWith("Council President") ||
+          trimmed.startsWith("Council Vice President") || /^a\.\s/.test(trimmed)
+        ));
+      bodyElements.push(
+        <p key={`b${i}`} style={{ paddingLeft: "36px", fontWeight: bold ? 700 : 400 }}>
+          {/^https?:\/\//.test(trimmed) ? (
+            <a href={trimmed} target="_blank" rel="noopener noreferrer" style={{ color: "#2563EB", wordBreak: "break-all" }}>
+              {trimmed}
+            </a>
+          ) : (
+            <ReviewText text={trimmed} videoUrl={videoUrl} />
+          )}
+        </p>
+      );
+    } else {
+      // Full-width text — preamble, motions, etc.
+      if (trimmed.startsWith("On a motion") || trimmed.startsWith("Hearing no further")) insideSection = false;
+      bodyElements.push(
+        <p key={`b${i}`}>
+          {/^https?:\/\//.test(trimmed) ? (
+            <a href={trimmed} target="_blank" rel="noopener noreferrer" style={{ color: "#2563EB", wordBreak: "break-all" }}>
+              {trimmed}
+            </a>
+          ) : (
+            <ReviewText text={trimmed} videoUrl={videoUrl} />
+          )}
+        </p>
+      );
+    }
+  }
+
+  // Parse signature lines
+  const sigNames: string[] = [];
+  const sigTitles: string[] = [];
+  for (const line of sigLines) {
+    const t = line.trim();
+    if (t.includes("___") || t === "") continue;
+    const parts = t.split(/\s{4,}/);
+    if (sigNames.length < 2) {
+      if (parts.length >= 2) { sigNames.push(parts[0].trim(), parts[1].trim()); }
+      else sigNames.push(t);
+    } else {
+      if (parts.length >= 2) { sigTitles.push(parts[0].trim(), parts[1].trim()); }
+      else sigTitles.push(t);
+    }
+  }
+
+  return (
+    <div
+      className="mt-6 rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60"
+      style={{
+        fontFamily: "'Times New Roman', Times, Georgia, serif",
+        fontSize: "10pt",
+        lineHeight: "11pt",
+        color: "#000",
+        padding: "72px",
+        maxWidth: "816px",
+        margin: "24px auto 0",
+      }}
+    >
+      {/* Title block — centered, bold */}
+      <div style={{ textAlign: "center", marginBottom: "22px" }}>
+        {titleLines.map((line, i) => (
+          <div key={i} style={{ fontWeight: 700 }}>{line.trim()}</div>
+        ))}
+      </div>
+
+      {/* Body */}
+      <div>{bodyElements}</div>
+
+      {/* Signature block */}
+      {sigNames.length > 0 && (
+        <div style={{ marginTop: "44px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ width: "38%", borderBottom: "0.5px solid #000" }}>&nbsp;</span>
+            <span style={{ width: "38%", borderBottom: "0.5px solid #000" }}>&nbsp;</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px" }}>
+            <span style={{ width: "38%" }}>{sigNames[0] || ""}</span>
+            <span style={{ width: "38%" }}>{sigNames[1] || ""}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ width: "38%" }}>{sigTitles[0] || ""}</span>
+            <span style={{ width: "38%" }}>{sigTitles[1] || ""}</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -239,6 +440,8 @@ function MeetingDetail({ meetingId, onBack }: {
   const [videoInput, setVideoInput] = useState("");
   const [minutesInput, setMinutesInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [generatingMinutes, setGeneratingMinutes] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
 
   const fetchMeeting = useCallback(async () => {
     setLoading(true);
@@ -254,6 +457,8 @@ function MeetingDetail({ meetingId, onBack }: {
 
   useEffect(() => { fetchMeeting(); }, [fetchMeeting]);
 
+  const reviewCount = useMemo(() => meeting?.minutes ? countReviewMarkers(meeting.minutes) : 0, [meeting?.minutes]);
+
   const save = async (updates: Record<string, unknown>) => {
     setSaving(true);
     try {
@@ -268,15 +473,39 @@ function MeetingDetail({ meetingId, onBack }: {
     setSaving(false);
   };
 
-  const saveVideo = () => {
-    save({ video_url: videoInput || null });
+  const saveVideo = async () => {
+    const url = videoInput || null;
+    await save({ video_url: url });
     setEditingVideo(false);
+
+    // Auto-generate minutes when a video link is added
+    if (url) {
+      setGeneratingMinutes(true);
+      setGenError(null);
+      try {
+        const res = await fetch(`/api/meetings/${meetingId}/generate-minutes`, {
+          method: "POST",
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          setGenError(data.error ?? "Failed to generate minutes");
+        } else {
+          const data = await res.json();
+          setMeeting((prev) => prev ? { ...prev, ...data } : prev);
+          setMinutesInput(data.minutes ?? "");
+        }
+      } catch (e) {
+        setGenError(e instanceof Error ? e.message : "Generation failed");
+      }
+      setGeneratingMinutes(false);
+    }
   };
 
   const saveMinutes = () => {
     save({ minutes: minutesInput });
     setEditingMinutes(false);
   };
+
 
   const updateStatus = (status: string) => {
     save({ status });
@@ -299,12 +528,6 @@ function MeetingDetail({ meetingId, onBack }: {
   }
 
   const isWorkSession = meeting.meeting_type === "work_session";
-
-  // Group agenda items by section
-  const sectionedItems = AGENDA_SECTIONS.map((section) => ({
-    ...section,
-    items: meeting.agenda_items.filter((item) => section.types.includes(item.item_type ?? "")),
-  })).filter((s) => s.items.length > 0);
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: "#F8F8F9" }}>
@@ -432,94 +655,129 @@ function MeetingDetail({ meetingId, onBack }: {
         </div>
 
         {/* Minutes Section */}
-        <div className="mb-6 rounded-lg bg-white p-5" style={{ border: "1px solid #E5E5E8" }}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={meeting.minutes ? "#4BB464" : "#C8C9CC"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M13 2H3C2.44772 2 2 2.44772 2 3V13C2 13.5523 2.44772 14 3 14H13C13.5523 14 14 13.5523 14 13V3C14 2.44772 13.5523 2 13 2Z" />
-                <path d="M5 5H11" /><path d="M5 8H11" /><path d="M5 11H8" />
-              </svg>
-              <h2 className="text-sm font-semibold" style={{ color: "#1D2024" }}>Minutes</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              {meeting.minutes && !editingMinutes && (
-                <a
-                  href={`/api/meetings/${meetingId}/pdf`}
-                  className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all"
-                  style={{ background: "#F0F0F3", color: "#1D2024", border: "1px solid #E5E5E8" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#E8E8EB")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "#F0F0F3")}
-                  download
-                >
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 2V10" /><path d="M4 8L8 12L12 8" /><path d="M2 14H14" />
-                  </svg>
-                  PDF
-                </a>
-              )}
-              {!editingMinutes && (
-                <button
-                  onClick={() => setEditingMinutes(true)}
-                  className="text-xs transition-colors"
-                  style={{ color: "#5E6AD2" }}
-                >
-                  {meeting.minutes ? "Edit" : "Add Manually"}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {editingMinutes ? (
-            <div className="mt-3">
-              <textarea
-                value={minutesInput}
-                onChange={(e) => setMinutesInput(e.target.value)}
-                placeholder="Enter meeting minutes..."
-                rows={8}
-                className="w-full rounded-md px-3 py-2 text-sm outline-none"
-                style={{ border: "1px solid #E5E5E8", color: "#1D2024", resize: "vertical" }}
-                autoFocus
-              />
-              <div className="mt-2 flex gap-2">
-                <button
-                  onClick={saveMinutes}
-                  className="rounded-md px-3 py-2 text-xs font-medium text-white"
-                  style={{ background: "#5E6AD2" }}
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => { setEditingMinutes(false); setMinutesInput(meeting.minutes ?? ""); }}
-                  className="rounded-md px-3 py-2 text-xs"
-                  style={{ color: "#6B6F76" }}
-                >
-                  Cancel
-                </button>
+        <div className="mb-6">
+          {/* Toolbar */}
+          <div className="rounded-lg bg-white p-5" style={{ border: "1px solid #E5E5E8" }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={meeting.minutes ? "#4BB464" : "#C8C9CC"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M13 2H3C2.44772 2 2 2.44772 2 3V13C2 13.5523 2.44772 14 3 14H13C13.5523 14 14 13.5523 14 13V3C14 2.44772 13.5523 2 13 2Z" />
+                  <path d="M5 5H11" /><path d="M5 8H11" /><path d="M5 11H8" />
+                </svg>
+                <h2 className="text-sm font-semibold" style={{ color: "#1D2024" }}>Minutes</h2>
+                {reviewCount > 0 && (
+                  <span
+                    className="ml-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    style={{ background: "rgba(245, 158, 11, 0.1)", color: "#B45309" }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 1L1 14h14L8 1zm0 4v4m0 2v1" stroke="#B45309" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                    </svg>
+                    {reviewCount} to review
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {meeting.minutes && !editingMinutes && (
+                  <a
+                    href={`/api/meetings/${meetingId}/pdf`}
+                    className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all"
+                    style={{ background: "#F0F0F3", color: "#1D2024", border: "1px solid #E5E5E8" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#E8E8EB")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "#F0F0F3")}
+                    download
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 2V10" /><path d="M4 8L8 12L12 8" /><path d="M2 14H14" />
+                    </svg>
+                    PDF
+                  </a>
+                )}
+                {!editingMinutes && (
+                  <button
+                    onClick={() => setEditingMinutes(true)}
+                    className="text-xs transition-colors"
+                    style={{ color: "#5E6AD2" }}
+                  >
+                    {meeting.minutes ? "Edit" : "Add Manually"}
+                  </button>
+                )}
               </div>
             </div>
-          ) : meeting.minutes ? (
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed" style={{ color: "#3D4046" }}>
-              {meeting.minutes}
-            </p>
-          ) : (
-            <p className="mt-2 text-xs" style={{ color: "#C8C9CC" }}>No minutes added yet</p>
+
+            {generatingMinutes ? (
+              <div className="mt-4 flex flex-col items-center py-8">
+                <span className="mb-3 inline-block h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-500" />
+                <p className="text-sm font-medium" style={{ color: "#1D2024" }}>Generating minutes...</p>
+                <p className="mt-1 text-[11px]" style={{ color: "#9CA0AB" }}>
+                  Transcribing video and analyzing with AI. This may take a minute.
+                </p>
+              </div>
+            ) : genError ? (
+              <div className="mt-3 rounded-md px-3 py-2 text-xs" style={{ background: "rgba(239,68,68,0.06)", color: "#ef4444" }}>
+                {genError}
+              </div>
+            ) : editingMinutes ? (
+              <div className="mt-3">
+                <textarea
+                  value={minutesInput}
+                  onChange={(e) => setMinutesInput(e.target.value)}
+                  placeholder="Enter meeting minutes..."
+                  rows={8}
+                  className="w-full rounded-md px-3 py-2 text-sm outline-none"
+                  style={{ border: "1px solid #E5E5E8", color: "#1D2024", resize: "vertical" }}
+                  autoFocus
+                />
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={saveMinutes}
+                    className="rounded-md px-3 py-2 text-xs font-medium text-white"
+                    style={{ background: "#5E6AD2" }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setEditingMinutes(false); setMinutesInput(meeting.minutes ?? ""); }}
+                    className="rounded-md px-3 py-2 text-xs"
+                    style={{ color: "#6B6F76" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : !meeting.minutes ? (
+              <p className="mt-2 text-xs" style={{ color: "#C8C9CC" }}>No minutes added yet</p>
+            ) : null}
+          </div>
+
+          {/* Minutes Document — renders as standalone card like the live agenda */}
+          {meeting.minutes && !editingMinutes && !generatingMinutes && (
+            <MinutesDocument text={meeting.minutes} videoUrl={meeting.video_url ?? undefined} />
           )}
         </div>
 
-        {/* Agenda Items Section */}
+        {/* Agenda Section */}
         <div className="rounded-lg bg-white p-5" style={{ border: "1px solid #E5E5E8" }}>
-          <div className="flex items-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1D2024" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 3H14" /><path d="M2 6.5H14" /><path d="M2 10H10" /><path d="M2 13.5H7" />
-            </svg>
-            <h2 className="text-sm font-semibold" style={{ color: "#1D2024" }}>
-              Agenda Items
-              {meeting.agenda_items.length > 0 && (
-                <span className="ml-1.5 text-xs font-normal" style={{ color: "#9CA0AB" }}>
-                  ({meeting.agenda_items.length})
-                </span>
-              )}
-            </h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1D2024" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 3H14" /><path d="M2 6.5H14" /><path d="M2 10H10" /><path d="M2 13.5H7" />
+              </svg>
+              <h2 className="text-sm font-semibold" style={{ color: "#1D2024" }}>Agenda</h2>
+            </div>
+            {meeting.agenda_items.length > 0 && (
+              <a
+                href={`/api/meetings/${meeting.id}/agenda-pdf`}
+                download
+                className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors"
+                style={{ color: "#5E6AD2", background: "rgba(94, 106, 210, 0.06)" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                Download PDF
+              </a>
+            )}
           </div>
 
           {meeting.agenda_items.length === 0 ? (
@@ -531,41 +789,12 @@ function MeetingDetail({ meetingId, onBack }: {
               </span>
             </p>
           ) : (
-            <div className="mt-4 space-y-5">
-              {sectionedItems.map((section) => (
-                <div key={section.key}>
-                  <p className="mb-2 text-[10px] font-medium uppercase tracking-wider" style={{ color: "#6B6F76" }}>
-                    {section.label}
-                  </p>
-                  <div className="space-y-1">
-                    {section.items.map((item) => {
-                      const meta = TYPE_META[item.item_type ?? ""] ?? { label: item.item_type, short: "---" };
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-3 rounded-md px-3 py-2 transition-colors"
-                          style={{ background: "#FAFAFA" }}
-                        >
-                          <span
-                            className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono font-medium"
-                            style={{ background: "rgba(94, 106, 210, 0.08)", color: "#5E6AD2" }}
-                          >
-                            {meta.short}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm" style={{ color: "#1D2024" }}>
-                              {item.summary || item.email_subject}
-                            </p>
-                            {item.department && (
-                              <p className="text-[11px]" style={{ color: "#9CA0AB" }}>{item.department}</p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+            <div className="mt-4 overflow-hidden rounded-md border" style={{ borderColor: "#E5E5E8" }}>
+              <iframe
+                src={`/api/meetings/${meeting.id}/agenda-pdf`}
+                className="h-[600px] w-full"
+                title="Meeting Agenda PDF"
+              />
             </div>
           )}
         </div>

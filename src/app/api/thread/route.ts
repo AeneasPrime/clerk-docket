@@ -123,7 +123,7 @@ function generateClerkReply(entry: {
   }
 
   body += `Please let me know if there are any changes or additional documents needed.\n\n`;
-  body += `Best regards,\nCheryl Russomanno\nMunicipal Clerk\nTownship of Edison`;
+  body += `Best regards,\nPatricia Benedetto\nMunicipal Clerk\nTownship of Edison`;
 
   return body;
 }
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
       {
         id: emailId,
         from: entry.email_from,
-        to: "Russomanno, Cheryl <clerk@edisonnj.org>",
+        to: "Benedetto, Patricia <clerk@edisonnj.org>",
         subject: entry.email_subject,
         date: originalDate.toISOString(),
         snippet: entry.email_body_preview,
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
       },
       {
         id: `${emailId}-reply-1`,
-        from: "Russomanno, Cheryl <clerk@edisonnj.org>",
+        from: "Benedetto, Patricia <clerk@edisonnj.org>",
         to: entry.email_from,
         subject: `Re: ${entry.email_subject}`,
         date: replyDate.toISOString(),

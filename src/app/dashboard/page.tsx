@@ -342,7 +342,7 @@ function CommandCenter({
         <div className="mb-6 grid grid-cols-4 gap-4">
           <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
             <div className="px-4 py-2.5" style={{ background: "#1F2023" }}>
-              <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>Next Meeting</span>
+              <span className="text-[11px] font-medium" style={{ color: "#FFFFFF" }}>Next Meeting</span>
             </div>
             <div className="bg-white px-4 py-3">
               <p className="text-[20px] font-semibold tabular-nums" style={{ color: "#1D2024" }}>
@@ -356,21 +356,17 @@ function CommandCenter({
 
           <button onClick={() => onViewChange("agenda")} className="overflow-hidden rounded-2xl text-left transition-colors hover:opacity-95" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
             <div className="px-4 py-2.5" style={{ background: "#1F2023" }}>
-              <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>On Agenda</span>
+              <span className="text-[11px] font-medium" style={{ color: "#FFFFFF" }}>On Agenda</span>
             </div>
             <div className="bg-white px-4 py-3">
               <p className="text-[20px] font-semibold tabular-nums" style={{ color: "#26B5CE" }}>{accepted.length}</p>
-              <p className="mt-0.5 text-[11px]" style={{ color: "#9CA0AB" }}>
-                {agendaTotal > 0
-                  ? `$${agendaTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : "items accepted"}
-              </p>
+              <p className="mt-0.5 text-[11px]" style={{ color: "#9CA0AB" }}>items accepted</p>
             </div>
           </button>
 
           <button onClick={() => onViewChange("review")} className="overflow-hidden rounded-2xl text-left transition-colors hover:opacity-95" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
             <div className="px-4 py-2.5" style={{ background: "#1F2023" }}>
-              <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>Needs Review</span>
+              <span className="text-[11px] font-medium" style={{ color: "#FFFFFF" }}>Needs Review</span>
             </div>
             <div className="bg-white px-4 py-3">
               <p className="text-[20px] font-semibold tabular-nums" style={{ color: newItems.length > 0 ? "#5E6AD2" : "#D2D3D6" }}>
@@ -384,7 +380,7 @@ function CommandCenter({
 
           <button onClick={() => onViewChange("needs_info")} className="overflow-hidden rounded-2xl text-left transition-colors hover:opacity-95" style={{ border: "1px solid #D4D4D8", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
             <div className="px-4 py-2.5" style={{ background: "#1F2023" }}>
-              <span className="text-[11px] font-medium" style={{ color: "#6B6F76" }}>Flagged</span>
+              <span className="text-[11px] font-medium" style={{ color: "#FFFFFF" }}>Flagged</span>
             </div>
             <div className="bg-white px-4 py-3">
               <p className="text-[20px] font-semibold tabular-nums" style={{ color: flagged.length > 0 ? "#F2555A" : "#D2D3D6" }}>
@@ -542,17 +538,15 @@ function CommandCenter({
                   {deptBreakdown.slice(0, 8).map(([dept, counts]) => {
                     const maxCount = Math.max(deptBreakdown[0]?.[1]?.total ?? 1, 1);
                     const pct = Math.max((counts.total / maxCount) * 100, 8);
-                    const barColor = counts.flagged > 0 ? "#F2555A" : counts.new_ > 0 ? "#5E6AD2" : "#1D6B5B";
                     return (
                       <div key={dept} className="flex items-center gap-3">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
-                          <circle cx="8" cy="8" r="7" stroke={barColor} strokeWidth="1.5" fill={barColor} fillOpacity={0.08}/>
-                          <text x="8" y="11" textAnchor="middle" fontSize="8" fontWeight="600" fill={barColor}>{dept[0]}</text>
-                        </svg>
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[11px]" style={{ color: "#5E6AD2" }}>
+                          {DEPARTMENTS.find((d) => d.name === dept)?.icon ?? dept[0]}
+                        </span>
                         <span className="w-28 shrink-0 truncate text-[12px]" style={{ color: "#1D2024" }}>{dept}</span>
                         <div className="flex-1">
                           <div className="h-2 overflow-hidden rounded-full" style={{ background: "#E8E8EA" }}>
-                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: barColor }} />
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#5E6AD2" }} />
                           </div>
                         </div>
                       </div>
@@ -651,40 +645,44 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
 
         <a href="/meetings" className="sb-nav">Meeting Packets</a>
 
-        <button
-          onClick={() => setDeptsOpen((v) => !v)}
-          className="sb-section-toggle mt-5 mb-1"
-        >
-          Departments
-          <svg
-            width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-            className={`transition-transform duration-150 ${deptsOpen ? "" : "-rotate-90"}`}
-          >
-            <path d="M3 4.5L6 7.5L9 4.5" />
-          </svg>
-        </button>
-        {deptsOpen && (() => {
-          const countMap: Record<string, number> = {};
-          if (stats) {
-            for (const d of stats.by_department ?? []) countMap[d.department] = d.count;
-          }
-          return DEPARTMENTS.map((dept) => {
-            const count = countMap[dept.name] ?? 0;
-            return (
-              <button
-                key={dept.name}
-                onClick={() => onDeptFilter(deptFilter === dept.name ? null : dept.name)}
-                className={`sb-dept ${count > 0 ? "has-items" : ""} ${deptFilter === dept.name ? "active" : ""}`}
+        {view !== "command" && view !== "ordinances" && (
+          <>
+            <button
+              onClick={() => setDeptsOpen((v) => !v)}
+              className="sb-section-toggle mt-5 mb-1"
+            >
+              Departments
+              <svg
+                width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                className={`transition-transform duration-150 ${deptsOpen ? "" : "-rotate-90"}`}
               >
-                <span className="flex items-center gap-1.5 truncate">
-                  <span className="sb-dept-icon">{dept.icon}</span>
-                  {dept.name}
-                </span>
-                <span className="sb-dept-count">{count}</span>
-              </button>
-            );
-          });
-        })()}
+                <path d="M3 4.5L6 7.5L9 4.5" />
+              </svg>
+            </button>
+            {deptsOpen && (() => {
+              const countMap: Record<string, number> = {};
+              if (stats) {
+                for (const d of stats.by_department ?? []) countMap[d.department] = d.count;
+              }
+              return DEPARTMENTS.map((dept) => {
+                const count = countMap[dept.name] ?? 0;
+                return (
+                  <button
+                    key={dept.name}
+                    onClick={() => onDeptFilter(deptFilter === dept.name ? null : dept.name)}
+                    className={`sb-dept ${count > 0 ? "has-items" : ""} ${deptFilter === dept.name ? "active" : ""}`}
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      <span className="sb-dept-icon">{dept.icon}</span>
+                      {dept.name}
+                    </span>
+                    <span className="sb-dept-count">{count}</span>
+                  </button>
+                );
+              });
+            })()}
+          </>
+        )}
       </nav>
 
       <div className="sb-footer">
@@ -710,12 +708,12 @@ function TopBar({
   onScan: () => void;
 }) {
   const ws = nextWorkSession();
-  const processed = (stats?.total ?? 0) - (stats?.new_count ?? 0);
+  const onAgenda = stats?.accepted ?? 0;
   const total = stats?.total ?? 0;
-  const pct = total === 0 ? 0 : Math.round((processed / total) * 100);
+  const pct = total === 0 ? 0 : Math.round((onAgenda / total) * 100);
 
   return (
-    <div className="bg-white px-6 py-4" style={{ borderBottom: "1px solid #E5E5E8" }}>
+    <div className="no-print bg-white px-6 py-4" style={{ borderBottom: "1px solid #E5E5E8" }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           <div>
@@ -1966,6 +1964,36 @@ function OrdTrackingForm({
 
 // --- Live Agenda ---
 
+const AGENDA_FONTS = [
+  { id: "times", label: "Times", css: "Georgia, 'Times New Roman', serif", group: "serif" },
+  { id: "garamond", label: "Garamond", css: "Garamond, 'EB Garamond', 'Times New Roman', serif", group: "serif" },
+  { id: "palatino", label: "Palatino", css: "'Palatino Linotype', Palatino, 'Book Antiqua', serif", group: "serif" },
+  { id: "bookman", label: "Bookman", css: "'Bookman Old Style', 'URW Bookman', Georgia, serif", group: "serif" },
+  { id: "cambria", label: "Cambria", css: "Cambria, Georgia, serif", group: "serif" },
+  { id: "charter", label: "Charter", css: "Charter, 'Bitstream Charter', Georgia, serif", group: "serif" },
+  { id: "helvetica", label: "Helvetica", css: "'Helvetica Neue', Helvetica, Arial, sans-serif", group: "sans" },
+  { id: "arial", label: "Arial", css: "Arial, 'Helvetica Neue', sans-serif", group: "sans" },
+  { id: "calibri", label: "Calibri", css: "Calibri, 'Gill Sans', 'Helvetica Neue', sans-serif", group: "sans" },
+  { id: "verdana", label: "Verdana", css: "Verdana, Geneva, sans-serif", group: "sans" },
+  { id: "trebuchet", label: "Trebuchet", css: "'Trebuchet MS', 'Lucida Grande', sans-serif", group: "sans" },
+  { id: "tahoma", label: "Tahoma", css: "Tahoma, Geneva, sans-serif", group: "sans" },
+  { id: "courier", label: "Courier", css: "'Courier New', Courier, monospace", group: "mono" },
+] as const;
+const AGENDA_FONT_MAP: Record<string, string> = Object.fromEntries(AGENDA_FONTS.map(f => [f.id, f.css]));
+const AGENDA_SPACING_MAP: Record<string, number> = { tight: 1.3, normal: 1.6, relaxed: 1.9 };
+
+interface AgendaPrefs { font: string; fontSize: number; spacing: string }
+const DEFAULT_PREFS: AgendaPrefs = { font: "times", fontSize: 12, spacing: "normal" };
+
+function loadAgendaPrefs(): AgendaPrefs {
+  if (typeof window === "undefined") return DEFAULT_PREFS;
+  try {
+    const raw = localStorage.getItem("agenda_prefs");
+    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+  } catch {}
+  return DEFAULT_PREFS;
+}
+
 function LiveAgenda({
   entries,
   onAction,
@@ -1979,6 +2007,29 @@ function LiveAgenda({
   const [trailSubject, setTrailSubject] = useState("");
   const [historyItemId, setHistoryItemId] = useState<number | null>(null);
   const [historySubject, setHistorySubject] = useState("");
+  const [prefs, setPrefs] = useState<AgendaPrefs>(DEFAULT_PREFS);
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+  const [agendaSearch, setAgendaSearch] = useState("");
+
+  useEffect(() => { setPrefs(loadAgendaPrefs()); }, []);
+  const updatePref = useCallback(<K extends keyof AgendaPrefs>(key: K, val: AgendaPrefs[K]) => {
+    setPrefs(prev => {
+      const next = { ...prev, [key]: val };
+      localStorage.setItem("agenda_prefs", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  // Close settings on outside click
+  useEffect(() => {
+    if (!showSettings) return;
+    const handler = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setShowSettings(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showSettings]);
   const saveOverride = useCallback(async (itemId: number, field: string, value: string | string[]) => {
     try {
       await fetch(`/api/docket-item?id=${itemId}`, {
@@ -2013,6 +2064,24 @@ function LiveAgenda({
     e.item_type === "discussion_item" || e.item_type === "informational" || e.item_type === "other"
   ), [accepted]);
 
+  const matchesSearch = useCallback((item: DocketEntry) => {
+    if (!agendaSearch.trim()) return true;
+    const q = agendaSearch.toLowerCase();
+    return (
+      item.email_subject.toLowerCase().includes(q) ||
+      (item.summary ?? "").toLowerCase().includes(q) ||
+      (item.department ?? "").toLowerCase().includes(q) ||
+      item.email_from.toLowerCase().includes(q) ||
+      (item.item_type ?? "").replace(/_/g, " ").toLowerCase().includes(q) ||
+      item.extracted_fields.toLowerCase().includes(q)
+    );
+  }, [agendaSearch]);
+
+  const filteredResolutions = useMemo(() => resolutions.filter(matchesSearch), [resolutions, matchesSearch]);
+  const filteredOrdinances = useMemo(() => ordinances.filter(matchesSearch), [ordinances, matchesSearch]);
+  const filteredDiscussion = useMemo(() => discussionItems.filter(matchesSearch), [discussionItems, matchesSearch]);
+  const filteredTotal = filteredResolutions.length + filteredOrdinances.length + filteredDiscussion.length;
+
   const ws = nextWorkSession();
   const meetingDateFull = ws.date.toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric",
@@ -2025,19 +2094,115 @@ function LiveAgenda({
       <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b border-slate-200/60 bg-white/90 px-6 py-3 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-semibold text-slate-800">Live Agenda</h2>
-          <span className="tabular-nums text-xs text-slate-400">{accepted.length} items</span>
+          <span className="tabular-nums text-xs text-slate-400">{agendaSearch ? `${filteredTotal} / ${accepted.length}` : accepted.length} items</span>
+          <div className="relative">
+            <svg className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <input
+              type="text"
+              value={agendaSearch}
+              onChange={(e) => setAgendaSearch(e.target.value)}
+              placeholder="Search agenda..."
+              className="w-44 rounded-md border border-slate-200 bg-slate-50/80 py-1.5 pl-7 pr-7 text-[12px] text-slate-700 placeholder-slate-400 outline-none transition-all focus:border-indigo-300 focus:bg-white focus:ring-1 focus:ring-indigo-200"
+            />
+            {agendaSearch && (
+              <button
+                onClick={() => setAgendaSearch("")}
+                className="absolute right-1.5 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded text-slate-400 hover:text-slate-600"
+              >
+                <span className="text-xs">&times;</span>
+              </button>
+            )}
+          </div>
         </div>
-        <button
-          onClick={() => window.print()}
-          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
-        >
-          Print / Export
-        </button>
+        <div className="relative flex items-center gap-2" ref={settingsRef}>
+          <button
+            onClick={() => setShowSettings(v => !v)}
+            className={`rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${showSettings ? "border-indigo-300 bg-indigo-50 text-indigo-600" : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"}`}
+            title="Document settings"
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+          <a
+            href={`/api/agenda/pdf?font=${prefs.font}&size=${prefs.fontSize}&spacing=${prefs.spacing}`}
+            download
+            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            Export PDF
+          </a>
+
+          {/* Settings popover */}
+          {showSettings && (
+            <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Document Settings</p>
+
+              {/* Font */}
+              <div className="mb-3">
+                <p className="mb-1.5 text-[11px] font-medium text-slate-600">Font</p>
+                {(["serif", "sans", "mono"] as const).map((group) => (
+                  <div key={group} className="mb-1.5">
+                    <p className="mb-1 text-[9px] font-medium uppercase tracking-wider text-slate-400">
+                      {group === "serif" ? "Serif" : group === "sans" ? "Sans-Serif" : "Monospace"}
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {AGENDA_FONTS.filter(f => f.group === group).map((f) => (
+                        <button
+                          key={f.id}
+                          onClick={() => updatePref("font", f.id)}
+                          className={`rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-all ${prefs.font === f.id ? "bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200" : "bg-slate-50 text-slate-500 hover:bg-slate-100"}`}
+                          style={{ fontFamily: f.css }}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Size */}
+              <div className="mb-3">
+                <p className="mb-1.5 text-[11px] font-medium text-slate-600">Size</p>
+                <div className="flex gap-1">
+                  {[10, 11, 12, 13, 14].map((sz) => (
+                    <button
+                      key={sz}
+                      onClick={() => updatePref("fontSize", sz)}
+                      className={`flex-1 rounded-md py-1.5 text-[11px] font-medium tabular-nums transition-all ${prefs.fontSize === sz ? "bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200" : "bg-slate-50 text-slate-500 hover:bg-slate-100"}`}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Spacing */}
+              <div>
+                <p className="mb-1.5 text-[11px] font-medium text-slate-600">Line Spacing</p>
+                <div className="flex gap-1">
+                  {([["tight", "Tight"], ["normal", "Normal"], ["relaxed", "Relaxed"]] as const).map(([val, label]) => (
+                    <button
+                      key={val}
+                      onClick={() => updatePref("spacing", val)}
+                      className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all ${prefs.spacing === val ? "bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200" : "bg-slate-50 text-slate-500 hover:bg-slate-100"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Document */}
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        <div className="agenda-doc rounded-xl bg-white p-12 shadow-sm ring-1 ring-slate-200/60">
+      <div className="agenda-doc-wrapper mx-auto max-w-3xl px-6 py-10">
+        <div className="agenda-doc rounded-xl bg-white p-12 shadow-sm ring-1 ring-slate-200/60" style={{ fontFamily: AGENDA_FONT_MAP[prefs.font], fontSize: `${prefs.fontSize}px`, lineHeight: AGENDA_SPACING_MAP[prefs.spacing] }}>
           {/* Header — Edison format */}
           <div className="mb-10 text-center">
             <h1 className="text-base font-bold uppercase tracking-widest text-slate-900">
@@ -2065,7 +2230,7 @@ function LiveAgenda({
           {accepted.length > 0 && (
             <div className="mt-8 space-y-10">
               {/* CONSENT AGENDA */}
-              {resolutions.length > 0 && (
+              {filteredResolutions.length > 0 && (
                 <div>
                   <h2 className="mb-4 border-b-2 border-slate-800 pb-1 text-sm font-bold uppercase tracking-wider text-slate-800">
                     CONSENT AGENDA
@@ -2073,7 +2238,7 @@ function LiveAgenda({
                   <p className="mb-6 text-[12px] italic leading-relaxed text-slate-500">
                     All items listed with an asterisk (*) are considered to be routine by the Township Council and will be enacted by one motion. There will be no separate discussion of these items unless a Council member so requests, in which event the item will be removed from the Consent Agenda and considered in its normal sequence on the agenda.
                   </p>
-                  {resolutions.map((item, resIdx) => {
+                  {filteredResolutions.map((item, resIdx) => {
                     const fields = parseJson<ExtractedFields>(item.extracted_fields, {});
                     const comp = parseJson<CompletenessCheck>(item.completeness, {
                       needs_cfo_certification: false, needs_attorney_review: false,
@@ -2191,12 +2356,12 @@ function LiveAgenda({
               )}
 
               {/* ORDINANCES */}
-              {ordinances.length > 0 && (
+              {filteredOrdinances.length > 0 && (
                 <div>
                   <h2 className="mb-4 border-b-2 border-slate-800 pb-1 text-sm font-bold uppercase tracking-wider text-slate-800">
                     FOR FURTHER CONSIDERATION AND PUBLIC HEARING OF ORDINANCES
                   </h2>
-                  {ordinances.map((item) => {
+                  {filteredOrdinances.map((item) => {
                     const fields = parseJson<ExtractedFields>(item.extracted_fields, {});
                     const override = parseJson<TextOverride>(item.text_override ?? "{}", {});
                     const hasOverride = Object.keys(override).length > 0;
@@ -2225,12 +2390,12 @@ function LiveAgenda({
               )}
 
               {/* DISCUSSION ITEMS */}
-              {discussionItems.length > 0 && (
+              {filteredDiscussion.length > 0 && (
                 <div>
                   <h2 className="mb-4 border-b-2 border-slate-800 pb-1 text-sm font-bold uppercase tracking-wider text-slate-800">
                     DISCUSSION ITEMS
                   </h2>
-                  {discussionItems.map((item, idx) => {
+                  {filteredDiscussion.map((item, idx) => {
                     const override = parseJson<TextOverride>(item.text_override ?? "{}", {});
                     const hasOverride = Object.keys(override).length > 0;
                     return (
@@ -2261,7 +2426,7 @@ function LiveAgenda({
           {/* Clerk signature */}
           {accepted.length > 0 && (
             <div className="mt-16 text-right">
-              <p className="text-[13px] font-medium uppercase text-slate-700">Cheryl Russomanno, RMC</p>
+              <p className="text-[13px] font-medium uppercase text-slate-700">Patricia Benedetto, RMC</p>
               <p className="text-[12px] text-slate-500">Township Clerk</p>
             </div>
           )}
@@ -2522,6 +2687,7 @@ export default function DashboardPage() {
   const [view, setView] = useState("command");
   const [itemsFilter, setItemsFilter] = useState<"all" | "review" | "accepted" | "needs_info">("all");
   const [deptFilter, setDeptFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Handle view changes — map old view names to items + filter
   const handleViewChange = useCallback((v: string) => {
@@ -2586,21 +2752,57 @@ export default function DashboardPage() {
   const needsInfo = useMemo(() => entries.filter((e) => e.status === "needs_info"), [entries]);
   const accepted = useMemo(() => entries.filter((e) => e.status === "accepted" || e.status === "on_agenda"), [entries]);
 
+  // Derive live stats from entries so optimistic updates reflect immediately
+  const liveStats = useMemo<DocketStats | null>(() => {
+    if (!stats) return null;
+    const newCount = entries.filter((e) => e.status === "new").length;
+    const reviewedCount = entries.filter((e) => e.status === "reviewed").length;
+    const acceptedCount = accepted.length;
+    const needsInfoCount = needsInfo.length;
+    const byType: Record<string, number> = {};
+    const byDept: Record<string, number> = {};
+    for (const e of entries) {
+      if (e.item_type) byType[e.item_type] = (byType[e.item_type] ?? 0) + 1;
+      if (e.department) byDept[e.department] = (byDept[e.department] ?? 0) + 1;
+    }
+    return {
+      total: entries.length,
+      new_count: newCount + reviewedCount,
+      reviewed: reviewedCount,
+      accepted: acceptedCount,
+      needs_info: needsInfoCount,
+      by_type: Object.entries(byType).map(([item_type, count]) => ({ item_type, count })).sort((a, b) => b.count - a.count),
+      by_department: Object.entries(byDept).map(([department, count]) => ({ department, count })).sort((a, b) => b.count - a.count),
+    };
+  }, [entries, stats, accepted, needsInfo]);
+
   const viewFiltered = itemsFilter === "review" ? reviewQueue
     : itemsFilter === "accepted" ? accepted
     : itemsFilter === "needs_info" ? needsInfo
     : entries;
 
-  const display = deptFilter
+  const deptFiltered = deptFilter
     ? viewFiltered.filter((e) => e.department === deptFilter)
     : viewFiltered;
 
+  const display = useMemo(() => {
+    if (!searchQuery.trim()) return deptFiltered;
+    const q = searchQuery.toLowerCase();
+    return deptFiltered.filter((e) =>
+      e.email_subject.toLowerCase().includes(q) ||
+      e.email_from.toLowerCase().includes(q) ||
+      (e.department ?? "").toLowerCase().includes(q) ||
+      (e.summary ?? "").toLowerCase().includes(q) ||
+      (e.item_type ?? "").replace(/_/g, " ").toLowerCase().includes(q)
+    );
+  }, [deptFiltered, searchQuery]);
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#F8F8F9" }}>
-      <Sidebar view={view} onViewChange={handleViewChange} stats={stats} deptFilter={deptFilter} onDeptFilter={setDeptFilter} />
+      <Sidebar view={view} onViewChange={handleViewChange} stats={liveStats} deptFilter={deptFilter} onDeptFilter={setDeptFilter} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {view !== "command" && <TopBar stats={stats} scanning={scanning} scanMessage={scanMsg} onScan={doScan} />}
+        {view !== "command" && <TopBar stats={liveStats} scanning={scanning} scanMessage={scanMsg} onScan={doScan} />}
 
         {loading ? (
           <div className="flex flex-1 items-center justify-center">
@@ -2623,7 +2825,7 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : view === "command" ? (
-          <CommandCenter entries={entries} stats={stats} onViewChange={handleViewChange} onSelect={(id) => setSelectedId(id)} />
+          <CommandCenter entries={entries} stats={liveStats} onViewChange={handleViewChange} onSelect={(id) => setSelectedId(id)} />
         ) : view === "live_agenda" ? (
           <LiveAgenda entries={entries} onAction={doAction} onRefresh={fetch_} />
         ) : view === "ordinances" ? (
@@ -2668,7 +2870,29 @@ export default function DashboardPage() {
                       </button>
                     )}
                   </div>
-                  <span className="tabular-nums text-xs text-slate-400">{display.length}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <svg className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                      </svg>
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search items..."
+                        className="w-44 rounded-md border border-slate-200 bg-slate-50/80 py-1.5 pl-7 pr-7 text-[12px] text-slate-700 placeholder-slate-400 outline-none transition-all focus:border-indigo-300 focus:bg-white focus:ring-1 focus:ring-indigo-200"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery("")}
+                          className="absolute right-1.5 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded text-slate-400 hover:text-slate-600"
+                        >
+                          <span className="text-xs">×</span>
+                        </button>
+                      )}
+                    </div>
+                    <span className="tabular-nums text-xs text-slate-400">{display.length}</span>
+                  </div>
                 </div>
               </div>
 
