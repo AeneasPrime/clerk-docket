@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 import type { ClassificationResult, DocketEntry, DocketStatus, Meeting, MeetingCycle, MeetingStatus, OrdinanceTracking } from "@/types";
+import { SEED_MINUTES } from "./seed-minutes";
 
 const dbPath = process.env.DATABASE_PATH || "./data/docket.db";
 const dbDir = path.dirname(dbPath);
@@ -970,6 +971,34 @@ function seedDemoData() {
   });
 
   insertAll();
+
+  // Seed meetings with video URLs and generated minutes
+  try {
+    // Ensure meeting rows exist first (including historical ones outside the normal window)
+    ensureMeetingsGenerated();
+    const meetingInsert = db.prepare(
+      `INSERT OR IGNORE INTO meetings (meeting_type, meeting_date, cycle_date) VALUES (?, ?, ?)`
+    );
+    const meetingUpdate = db.prepare(`
+      UPDATE meetings SET video_url = ?, minutes = ?, status = 'completed'
+      WHERE meeting_date = ? AND meeting_type = ?
+    `);
+    const seedMeetings = db.transaction(() => {
+      for (const m of SEED_MINUTES) {
+        // For historical meetings, ensure the row exists
+        const cycleDate = m.meeting_type === "regular"
+          ? (() => { const d = new Date(m.meeting_date); d.setDate(d.getDate() - 2); return d.toISOString().split("T")[0]; })()
+          : m.meeting_date;
+        meetingInsert.run(m.meeting_type, m.meeting_date, cycleDate);
+        meetingUpdate.run(m.video_url, m.minutes, m.meeting_date, m.meeting_type);
+      }
+    });
+    seedMeetings();
+    console.log(`[seed] Seeded ${SEED_MINUTES.length} meetings with minutes`);
+  } catch (e) {
+    console.warn("[seed] Could not load seed-minutes:", e);
+  }
+
   db.prepare("INSERT INTO config (key, value) VALUES ('seed_v1', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
   console.log(`[seed] Inserted ${rows.length} demo docket entries`);
 }
