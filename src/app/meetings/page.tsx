@@ -919,10 +919,8 @@ function MeetingDetail({ meetingId, onBack }: {
                 {meeting.minutes && (
                   <button
                     onClick={() => setShowHistory(true)}
-                    className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all"
-                    style={{ background: "#F0F0F3", color: "#1D2024", border: "1px solid #E5E5E8" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#E8E8EB")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "#F0F0F3")}
+                    className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors"
+                    style={{ color: "#5E6AD2", background: "rgba(94, 106, 210, 0.06)" }}
                   >
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="8" cy="8" r="6.5" /><path d="M8 4.5V8L10 10" />
@@ -933,16 +931,14 @@ function MeetingDetail({ meetingId, onBack }: {
                 {meeting.minutes && (
                   <a
                     href={`/api/meetings/${meetingId}/pdf`}
-                    className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all"
-                    style={{ background: "#F0F0F3", color: "#1D2024", border: "1px solid #E5E5E8" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#E8E8EB")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "#F0F0F3")}
+                    className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors"
+                    style={{ color: "#5E6AD2", background: "rgba(94, 106, 210, 0.06)" }}
                     download
                   >
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 2V10" /><path d="M4 8L8 12L12 8" /><path d="M2 14H14" />
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
                     </svg>
-                    PDF
+                    Download PDF
                   </a>
                 )}
               </div>
