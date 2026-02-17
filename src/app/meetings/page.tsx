@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 // --- Types ---
 
@@ -96,9 +96,25 @@ function stripTimestamp(marker: string): string {
   return marker.replace(/\s*@\d{1,2}:\d{2}(?::\d{2})?\s*/, " ").replace(/\s+\]/, "]");
 }
 
-/** Render inline text with [REVIEW: ...] markers highlighted — clickable with timestamp */
-function ReviewText({ text, videoUrl }: { text: string; videoUrl?: string }) {
+/** Extract the inner content text from a [REVIEW: ...] marker */
+function extractReviewContent(marker: string): string {
+  return marker.replace(/^\[REVIEW:\s*/, "").replace(/\s*@\d{1,2}:\d{2}(?::\d{2})?\s*\]$/, "").replace(/\]$/, "").trim();
+}
+
+/** Get all review markers from text */
+function getAllReviewMarkers(text: string): string[] {
+  return text.match(/\[REVIEW:[^\]]*\]/g) ?? [];
+}
+
+/** Render inline text with [REVIEW: ...] markers highlighted */
+function ReviewText({ text, videoUrl, activeMarker, markerOffset }: {
+  text: string;
+  videoUrl?: string;
+  activeMarker?: string | null;
+  markerOffset?: number;
+}) {
   const parts = text.split(/(\[REVIEW:[^\]]*\])/g);
+  let markerIdx = markerOffset ?? 0;
   return (
     <>
       {parts.map((part, i) => {
@@ -107,21 +123,26 @@ function ReviewText({ text, videoUrl }: { text: string; videoUrl?: string }) {
         const ts = parseReviewTimestamp(part);
         const displayText = stripTimestamp(part);
         const canLink = videoUrl;
+        const isActive = part === activeMarker;
+        const domId = `review-marker-${markerIdx}`;
+        markerIdx++;
 
         return (
           <span
             key={i}
-            className="group/review inline-block relative rounded px-1 py-0.5 text-[11px] font-medium"
+            id={domId}
+            className="group/review inline-block relative rounded px-1 py-0.5 text-[11px] font-medium transition-all"
             style={{
-              background: "rgba(245, 158, 11, 0.12)",
+              background: isActive ? "rgba(245, 158, 11, 0.3)" : "rgba(245, 158, 11, 0.12)",
               color: "#B45309",
-              border: "1px solid rgba(245, 158, 11, 0.25)",
+              border: isActive ? "2px solid #D97706" : "1px solid rgba(245, 158, 11, 0.25)",
               cursor: canLink ? "pointer" : "default",
+              boxShadow: isActive ? "0 0 0 3px rgba(217, 119, 6, 0.2)" : "none",
             }}
             onClick={canLink ? () => window.open(ts ? `${videoUrl}?seekto=${ts.seconds}` : videoUrl, "_blank") : undefined}
           >
             {displayText}
-            {canLink && (
+            {canLink && !isActive && (
               <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/review:flex items-center gap-1 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-[10px] text-white shadow-lg">
                 {ts ? `▶ ${ts.display} — click to jump` : "▶ Click to open video"}
                 <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
@@ -151,8 +172,50 @@ function isFullWidthLine(text: string): boolean {
   );
 }
 
+/** Inline-editable line — contentEditable span that saves on blur (same pattern as live agenda) */
+function EditableLine({ value, lineIdx, onSave, children }: {
+  value: string;
+  lineIdx: number;
+  onSave?: (lineIdx: number, newText: string) => void;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const savedRef = useRef(value);
+
+  useEffect(() => {
+    savedRef.current = value;
+  }, [value]);
+
+  if (!onSave) return <>{children}</>;
+
+  return (
+    <span
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      onFocus={() => { savedRef.current = ref.current?.textContent ?? value; }}
+      onBlur={() => {
+        const text = ref.current?.textContent ?? "";
+        if (text !== savedRef.current) {
+          savedRef.current = text;
+          onSave(lineIdx, text);
+        }
+      }}
+      className="outline-none cursor-text"
+      style={{ display: "inline" }}
+    >
+      {children}
+    </span>
+  );
+}
+
 /** Render minutes as a print-preview document matching the PDF output */
-function MinutesDocument({ text, videoUrl }: { text: string; videoUrl?: string }) {
+function MinutesDocument({ text, videoUrl, activeMarker, onLineEdit }: {
+  text: string;
+  videoUrl?: string;
+  activeMarker?: string | null;
+  onLineEdit?: (lineIdx: number, newText: string) => void;
+}) {
   const lines = text.split("\n");
 
   // Title block: everything before "A Worksession..." or "A Regular..."
@@ -165,6 +228,11 @@ function MinutesDocument({ text, videoUrl }: { text: string; videoUrl?: string }
     }
   }
   const titleLines = lines.slice(0, titleEnd).filter(l => l.trim());
+  // Map filtered title lines back to their original indices
+  const titleLineIndices: number[] = [];
+  for (let i = 0; i < titleEnd; i++) {
+    if (lines[i].trim()) titleLineIndices.push(i);
+  }
 
   // Signature block: find last line with underscores
   let sigStart = lines.length;
@@ -173,6 +241,12 @@ function MinutesDocument({ text, videoUrl }: { text: string; videoUrl?: string }
   }
   const bodyLines = lines.slice(titleEnd, sigStart);
   const sigLines = lines.slice(sigStart);
+
+  // Track global marker offset so each ReviewText gets unique IDs
+  let globalMarkerOffset = 0;
+  function countMarkers(lineText: string): number {
+    return (lineText.match(/\[REVIEW:[^\]]*\]/g) ?? []).length;
+  }
 
   // Track section state for indentation and bold logic
   const sectionNumPattern = /^(\d+)\.\s+/;
@@ -183,6 +257,7 @@ function MinutesDocument({ text, videoUrl }: { text: string; videoUrl?: string }
 
   for (let i = 0; i < bodyLines.length; i++) {
     const trimmed = bodyLines[i].trim();
+    const absIdx = titleEnd + i; // absolute line index in full text
 
     if (trimmed === "") {
       bodyElements.push(<div key={`b${i}`} style={{ height: "11px" }} />);
@@ -194,16 +269,29 @@ function MinutesDocument({ text, videoUrl }: { text: string; videoUrl?: string }
     else if (/^\d+\.\s+/.test(trimmed) && !trimmed.includes("DISCUSSION")) inDiscussion = false;
 
     const sectionMatch = trimmed.match(sectionNumPattern);
+    const currentOffset = globalMarkerOffset;
+    globalMarkerOffset += countMarkers(trimmed);
+
+    const lineContent = /^https?:\/\//.test(trimmed) ? (
+      <a href={trimmed} target="_blank" rel="noopener noreferrer" style={{ color: "#2563EB", wordBreak: "break-all" }}>
+        {trimmed}
+      </a>
+    ) : (
+      <ReviewText text={trimmed} videoUrl={videoUrl} activeMarker={activeMarker} markerOffset={currentOffset} />
+    );
 
     if (sectionMatch) {
       // Numbered section header — bold, number flush left + title indented
       insideSection = true;
       const numText = sectionMatch[0];
-      const rest = trimmed.slice(numText.length);
       bodyElements.push(
         <div key={`b${i}`} style={{ display: "flex", marginTop: "6px" }}>
           <span style={{ fontWeight: 700, minWidth: "36px", flexShrink: 0 }}>{numText}</span>
-          <span style={{ fontWeight: 700 }}><ReviewText text={rest} videoUrl={videoUrl} /></span>
+          <span style={{ fontWeight: 700 }}>
+            <EditableLine value={trimmed} lineIdx={absIdx} onSave={onLineEdit}>
+              {lineContent}
+            </EditableLine>
+          </span>
         </div>
       );
     } else if (insideSection && !isFullWidthLine(trimmed)) {
@@ -215,13 +303,9 @@ function MinutesDocument({ text, videoUrl }: { text: string; videoUrl?: string }
         ));
       bodyElements.push(
         <p key={`b${i}`} style={{ paddingLeft: "36px", fontWeight: bold ? 700 : 400 }}>
-          {/^https?:\/\//.test(trimmed) ? (
-            <a href={trimmed} target="_blank" rel="noopener noreferrer" style={{ color: "#2563EB", wordBreak: "break-all" }}>
-              {trimmed}
-            </a>
-          ) : (
-            <ReviewText text={trimmed} videoUrl={videoUrl} />
-          )}
+          <EditableLine value={trimmed} lineIdx={absIdx} onSave={onLineEdit}>
+            {lineContent}
+          </EditableLine>
         </p>
       );
     } else {
@@ -229,13 +313,9 @@ function MinutesDocument({ text, videoUrl }: { text: string; videoUrl?: string }
       if (trimmed.startsWith("On a motion") || trimmed.startsWith("Hearing no further")) insideSection = false;
       bodyElements.push(
         <p key={`b${i}`}>
-          {/^https?:\/\//.test(trimmed) ? (
-            <a href={trimmed} target="_blank" rel="noopener noreferrer" style={{ color: "#2563EB", wordBreak: "break-all" }}>
-              {trimmed}
-            </a>
-          ) : (
-            <ReviewText text={trimmed} videoUrl={videoUrl} />
-          )}
+          <EditableLine value={trimmed} lineIdx={absIdx} onSave={onLineEdit}>
+            {lineContent}
+          </EditableLine>
         </p>
       );
     }
@@ -272,8 +352,12 @@ function MinutesDocument({ text, videoUrl }: { text: string; videoUrl?: string }
     >
       {/* Title block — centered, bold */}
       <div style={{ textAlign: "center", marginBottom: "22px" }}>
-        {titleLines.map((line, i) => (
-          <div key={i} style={{ fontWeight: 700 }}>{line.trim()}</div>
+        {titleLines.map((line, ti) => (
+          <div key={ti} style={{ fontWeight: 700 }}>
+            <EditableLine value={line.trim()} lineIdx={titleLineIndices[ti]} onSave={onLineEdit}>
+              {line.trim()}
+            </EditableLine>
+          </div>
         ))}
       </div>
 
@@ -427,6 +511,103 @@ function MeetingCycleRow({ cycle, onSelect }: {
   );
 }
 
+// --- Minutes History Sidebar ---
+
+interface MinutesHistoryEntry {
+  id: number;
+  meeting_id: number;
+  old_value: string;
+  new_value: string;
+  changed_at: string;
+}
+
+/** Find the first differing line between two texts */
+function diffLine(oldText: string, newText: string): { oldLine: string; newLine: string } | null {
+  const oldLines = oldText.split("\n");
+  const newLines = newText.split("\n");
+  const max = Math.max(oldLines.length, newLines.length);
+  for (let i = 0; i < max; i++) {
+    const o = (oldLines[i] ?? "").trim();
+    const n = (newLines[i] ?? "").trim();
+    if (o !== n) return { oldLine: o, newLine: n };
+  }
+  return null;
+}
+
+function MinutesHistorySidebar({ meetingId, onClose }: {
+  meetingId: number;
+  onClose: () => void;
+}) {
+  const [history, setHistory] = useState<MinutesHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/meetings/${meetingId}?history=true`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setHistory(data.history ?? []);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [meetingId]);
+
+  return (
+    <div className="animate-slide-in no-print fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-slate-200 bg-white shadow-2xl">
+      <div className="flex items-start gap-3 border-b border-slate-200/60 p-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Edit History</p>
+          <h2 className="mt-1 text-[14px] font-semibold leading-snug text-slate-900">Minutes</h2>
+        </div>
+        <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
+          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="h-5 w-5 animate-spin rounded-full" style={{ borderWidth: 2, borderStyle: "solid", borderRightColor: "#E5E5E8", borderBottomColor: "#E5E5E8", borderLeftColor: "#E5E5E8", borderTopColor: "#5E6AD2" }} />
+          </div>
+        ) : history.length === 0 ? (
+          <p className="py-12 text-center text-sm italic text-slate-400">No edit history yet</p>
+        ) : (
+          <div className="space-y-4">
+            {history.map((h) => {
+              const diff = diffLine(h.old_value, h.new_value);
+              return (
+                <div key={h.id} className="rounded-lg border border-slate-200/60 p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400">
+                      {new Date(h.changed_at + "Z").toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  {diff ? (
+                    <>
+                      {diff.oldLine && (
+                        <>
+                          <div className="mb-1 text-[10px] font-medium text-slate-400">Previous:</div>
+                          <p className="mb-2 rounded bg-red-50/50 p-2 text-[11px] leading-relaxed text-slate-600 line-through">{diff.oldLine}</p>
+                        </>
+                      )}
+                      <div className="mb-1 text-[10px] font-medium text-slate-400">{diff.oldLine ? "Changed to:" : "Added:"}</div>
+                      <p className="rounded bg-green-50/50 p-2 text-[11px] leading-relaxed text-slate-700">{diff.newLine}</p>
+                    </>
+                  ) : (
+                    <p className="text-[11px] italic text-slate-400">No visible difference</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // --- Meeting Detail ---
 
 function MeetingDetail({ meetingId, onBack }: {
@@ -436,12 +617,14 @@ function MeetingDetail({ meetingId, onBack }: {
   const [meeting, setMeeting] = useState<MeetingWithAgenda | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingVideo, setEditingVideo] = useState(false);
-  const [editingMinutes, setEditingMinutes] = useState(false);
   const [videoInput, setVideoInput] = useState("");
-  const [minutesInput, setMinutesInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [generatingMinutes, setGeneratingMinutes] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [reviewIdx, setReviewIdx] = useState(0);
+  const [reviewEditText, setReviewEditText] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
 
   const fetchMeeting = useCallback(async () => {
     setLoading(true);
@@ -450,7 +633,6 @@ function MeetingDetail({ meetingId, onBack }: {
       const data = await res.json();
       setMeeting(data);
       setVideoInput(data.video_url ?? "");
-      setMinutesInput(data.minutes ?? "");
     } catch { /* ignore */ }
     setLoading(false);
   }, [meetingId]);
@@ -458,6 +640,55 @@ function MeetingDetail({ meetingId, onBack }: {
   useEffect(() => { fetchMeeting(); }, [fetchMeeting]);
 
   const reviewCount = useMemo(() => meeting?.minutes ? countReviewMarkers(meeting.minutes) : 0, [meeting?.minutes]);
+  const reviewMarkers = useMemo(() => meeting?.minutes ? getAllReviewMarkers(meeting.minutes) : [], [meeting?.minutes]);
+  const currentMarker = reviewMode && reviewIdx < reviewMarkers.length ? reviewMarkers[reviewIdx] : null;
+
+  const startReview = () => {
+    if (reviewMarkers.length === 0) return;
+    setReviewMode(true);
+    setReviewIdx(0);
+    setReviewEditText(extractReviewContent(reviewMarkers[0]));
+    setTimeout(() => {
+      document.getElementById("review-marker-0")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  };
+
+  const scrollToReview = (idx: number) => {
+    setTimeout(() => {
+      document.getElementById(`review-marker-${idx}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  };
+
+  const acceptReview = async () => {
+    if (!meeting || !currentMarker) return;
+    const updated = meeting.minutes.replace(currentMarker, reviewEditText);
+    await save({ minutes: updated });
+    // After save, markers shift — recompute
+    const remaining = getAllReviewMarkers(updated);
+    if (remaining.length === 0) {
+      setReviewMode(false);
+    } else {
+      const nextIdx = Math.min(reviewIdx, remaining.length - 1);
+      setReviewIdx(nextIdx);
+      setReviewEditText(extractReviewContent(remaining[nextIdx]));
+      scrollToReview(nextIdx);
+    }
+  };
+
+  const skipReview = () => {
+    const nextIdx = reviewIdx + 1;
+    if (nextIdx >= reviewMarkers.length) {
+      setReviewMode(false);
+    } else {
+      setReviewIdx(nextIdx);
+      setReviewEditText(extractReviewContent(reviewMarkers[nextIdx]));
+      scrollToReview(nextIdx);
+    }
+  };
+
+  const exitReview = () => {
+    setReviewMode(false);
+  };
 
   const save = async (updates: Record<string, unknown>) => {
     setSaving(true);
@@ -492,8 +723,7 @@ function MeetingDetail({ meetingId, onBack }: {
         } else {
           const data = await res.json();
           setMeeting((prev) => prev ? { ...prev, ...data } : prev);
-          setMinutesInput(data.minutes ?? "");
-        }
+            }
       } catch (e) {
         setGenError(e instanceof Error ? e.message : "Generation failed");
       }
@@ -501,10 +731,14 @@ function MeetingDetail({ meetingId, onBack }: {
     }
   };
 
-  const saveMinutes = () => {
-    save({ minutes: minutesInput });
-    setEditingMinutes(false);
-  };
+  const onLineEdit = useCallback((lineIdx: number, newText: string) => {
+    if (!meeting?.minutes) return;
+    const lines = meeting.minutes.split("\n");
+    if (lineIdx < 0 || lineIdx >= lines.length) return;
+    lines[lineIdx] = newText;
+    const updated = lines.join("\n");
+    save({ minutes: updated });
+  }, [meeting?.minutes]);
 
 
   const updateStatus = (status: string) => {
@@ -666,19 +900,37 @@ function MeetingDetail({ meetingId, onBack }: {
                 </svg>
                 <h2 className="text-sm font-semibold" style={{ color: "#1D2024" }}>Minutes</h2>
                 {reviewCount > 0 && (
-                  <span
-                    className="ml-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                    style={{ background: "rgba(245, 158, 11, 0.1)", color: "#B45309" }}
+                  <button
+                    onClick={startReview}
+                    className="ml-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors hover:opacity-80"
+                    style={{ background: reviewMode ? "#D97706" : "rgba(245, 158, 11, 0.1)", color: reviewMode ? "#fff" : "#B45309" }}
                   >
                     <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-                      <path d="M8 1L1 14h14L8 1zm0 4v4m0 2v1" stroke="#B45309" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                      <path d="M8 1L1 14h14L8 1zm0 4v4m0 2v1" stroke={reviewMode ? "#fff" : "#B45309"} strokeWidth="1.5" fill="none" strokeLinecap="round" />
                     </svg>
-                    {reviewCount} to review
-                  </span>
+                    {reviewMode ? `${reviewIdx + 1}/${reviewCount}` : `${reviewCount} to review`}
+                  </button>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {meeting.minutes && !editingMinutes && (
+                {saving && (
+                  <span className="text-[10px]" style={{ color: "#9CA0AB" }}>Saving...</span>
+                )}
+                {meeting.minutes && (
+                  <button
+                    onClick={() => setShowHistory(true)}
+                    className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all"
+                    style={{ background: "#F0F0F3", color: "#1D2024", border: "1px solid #E5E5E8" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#E8E8EB")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "#F0F0F3")}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="8" cy="8" r="6.5" /><path d="M8 4.5V8L10 10" />
+                    </svg>
+                    History
+                  </button>
+                )}
+                {meeting.minutes && (
                   <a
                     href={`/api/meetings/${meetingId}/pdf`}
                     className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all"
@@ -692,15 +944,6 @@ function MeetingDetail({ meetingId, onBack }: {
                     </svg>
                     PDF
                   </a>
-                )}
-                {!editingMinutes && (
-                  <button
-                    onClick={() => setEditingMinutes(true)}
-                    className="text-xs transition-colors"
-                    style={{ color: "#5E6AD2" }}
-                  >
-                    {meeting.minutes ? "Edit" : "Add Manually"}
-                  </button>
                 )}
               </div>
             </div>
@@ -717,44 +960,83 @@ function MeetingDetail({ meetingId, onBack }: {
               <div className="mt-3 rounded-md px-3 py-2 text-xs" style={{ background: "rgba(239,68,68,0.06)", color: "#ef4444" }}>
                 {genError}
               </div>
-            ) : editingMinutes ? (
-              <div className="mt-3">
-                <textarea
-                  value={minutesInput}
-                  onChange={(e) => setMinutesInput(e.target.value)}
-                  placeholder="Enter meeting minutes..."
-                  rows={8}
-                  className="w-full rounded-md px-3 py-2 text-sm outline-none"
-                  style={{ border: "1px solid #E5E5E8", color: "#1D2024", resize: "vertical" }}
-                  autoFocus
-                />
-                <div className="mt-2 flex gap-2">
-                  <button
-                    onClick={saveMinutes}
-                    className="rounded-md px-3 py-2 text-xs font-medium text-white"
-                    style={{ background: "#5E6AD2" }}
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => { setEditingMinutes(false); setMinutesInput(meeting.minutes ?? ""); }}
-                    className="rounded-md px-3 py-2 text-xs"
-                    style={{ color: "#6B6F76" }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
             ) : !meeting.minutes ? (
               <p className="mt-2 text-xs" style={{ color: "#C8C9CC" }}>No minutes added yet</p>
             ) : null}
           </div>
 
-          {/* Minutes Document — renders as standalone card like the live agenda */}
-          {meeting.minutes && !editingMinutes && !generatingMinutes && (
-            <MinutesDocument text={meeting.minutes} videoUrl={meeting.video_url ?? undefined} />
+          {/* Minutes Document — directly editable inline */}
+          {meeting.minutes && !generatingMinutes && (
+            <MinutesDocument text={meeting.minutes} videoUrl={meeting.video_url ?? undefined} activeMarker={currentMarker} onLineEdit={onLineEdit} />
           )}
         </div>
+
+        {/* Review mode floating panel */}
+        {reviewMode && currentMarker && (
+          <div
+            className="sticky bottom-4 z-30 mx-auto w-full max-w-[700px] rounded-xl bg-white shadow-2xl"
+            style={{ border: "2px solid #D97706" }}
+          >
+            <div className="flex items-center justify-between border-b px-4 py-2.5" style={{ borderColor: "#F0F0F2", background: "#FFFBF0" }}>
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "#D97706" }}>
+                  {reviewIdx + 1}
+                </span>
+                <span className="text-[12px] font-semibold" style={{ color: "#92400E" }}>
+                  Review {reviewIdx + 1} of {reviewMarkers.length}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={skipReview}
+                  className="rounded px-2.5 py-1 text-[11px] font-medium transition-colors"
+                  style={{ color: "#6B6F76", border: "1px solid #E5E5E8" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#F0F0F2")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={exitReview}
+                  className="rounded px-2 py-1 text-[11px] transition-colors"
+                  style={{ color: "#9CA0AB" }}
+                  title="Exit review mode"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="px-4 py-3">
+              <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#9CA0AB" }}>
+                Corrected text
+              </label>
+              <textarea
+                value={reviewEditText}
+                onChange={(e) => setReviewEditText(e.target.value)}
+                rows={2}
+                className="w-full resize-none rounded-md px-3 py-2 text-[13px] outline-none focus:ring-2"
+                style={{ border: "1px solid #E5E5E8", background: "#FAFAFA" }}
+              />
+              <div className="mt-2.5 flex items-center justify-between">
+                <p className="text-[10px]" style={{ color: "#9CA0AB" }}>
+                  Edit the text above or accept as-is
+                </p>
+                <button
+                  onClick={acceptReview}
+                  className="flex items-center gap-1.5 rounded-md px-4 py-1.5 text-[12px] font-semibold text-white transition-colors"
+                  style={{ background: "#16A34A" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#15803D")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "#16A34A")}
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 6l3 3 5-5" />
+                  </svg>
+                  Accept
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Agenda Section */}
         <div className="rounded-lg bg-white p-5" style={{ border: "1px solid #E5E5E8" }}>
@@ -798,6 +1080,14 @@ function MeetingDetail({ meetingId, onBack }: {
             </div>
           )}
         </div>
+
+        {/* History sidebar overlay */}
+        {showHistory && (
+          <>
+            <div className="animate-fade-in fixed inset-0 z-40 bg-slate-900/15 backdrop-blur-sm" onClick={() => setShowHistory(false)} />
+            <MinutesHistorySidebar meetingId={meetingId} onClose={() => setShowHistory(false)} />
+          </>
+        )}
       </div>
     </div>
   );

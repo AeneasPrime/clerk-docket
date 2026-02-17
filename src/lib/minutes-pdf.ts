@@ -24,6 +24,7 @@ interface MinutesPDFOptions {
   meetingDate: string;
   meetingType: "work_session" | "regular";
   minutes: string;
+  isDraft?: boolean;
 }
 
 function formatHeaderDate(dateStr: string): string {
@@ -74,7 +75,7 @@ function isBoldLine(text: string, inDiscussion: boolean): boolean {
 }
 
 export function generateMinutesPDF(options: MinutesPDFOptions): PDFKit.PDFDocument {
-  const { meetingDate, minutes } = options;
+  const { meetingDate, minutes, isDraft } = options;
   const headerDate = formatHeaderDate(meetingDate);
 
   const doc = new PDFDocument({
@@ -103,6 +104,18 @@ export function generateMinutesPDF(options: MinutesPDFOptions): PDFKit.PDFDocume
       align: "right",
       lineBreak: false,
     });
+    if (isDraft) {
+      doc.font(FONT_BOLD).fontSize(28);
+      doc.fillColor("#CC0000")
+        .text("DRAFT", PAGE.marginLeft, PAGE.marginTop - 32, {
+          width: PAGE.contentWidth,
+          align: "center",
+          lineBreak: false,
+        })
+        .fillColor("#000000");
+    }
+    // Reset font so callers aren't left with DRAFT's bold 28pt font state
+    doc.font(FONT_REG).fontSize(FONT_SIZE);
     doc.y = savedDocY;
     y = savedY;
   }
@@ -140,13 +153,18 @@ export function generateMinutesPDF(options: MinutesPDFOptions): PDFKit.PDFDocume
     }
   }
 
-  function writeText(text: string, x: number, width: number, opts?: { align?: string; bold?: boolean }) {
+  function writeText(text: string, x: number, width: number, opts?: { align?: string; bold?: boolean; color?: string }) {
     const font = opts?.bold ? FONT_BOLD : FONT_REG;
     doc.font(font).fontSize(FONT_SIZE);
+    if (opts?.color) doc.fillColor(opts.color);
     const textHeight = doc.heightOfString(text, { width, lineGap: LINE_GAP });
     ensureSpace(textHeight);
+    // Re-apply font after ensureSpace (page breaks can change font state)
+    doc.font(font).fontSize(FONT_SIZE);
+    if (opts?.color) doc.fillColor(opts.color);
     doc.text(text, x, y, { width, lineGap: LINE_GAP, align: opts?.align as "center" | "left" | undefined });
     y = doc.y;
+    if (opts?.color) doc.fillColor("#000000");
   }
 
   function blankLine() {
@@ -154,6 +172,52 @@ export function generateMinutesPDF(options: MinutesPDFOptions): PDFKit.PDFDocume
   }
 
   // --- Parse minutes into sections ---
+  const REVIEW_RE = /\[REVIEW:\s*(.*?)(?:\s*@\d{1,2}:\d{2}(?::\d{2})?)?\s*\]/g;
+
+  function hasReviewMarker(text: string): boolean {
+    return /\[REVIEW:[^\]]*\]/.test(text);
+  }
+
+  /** Render a line that contains [REVIEW: ...] markers with mixed colors:
+   *  normal text in black, review content in red prefixed with "REVIEW:" */
+  function writeReviewLine(text: string, x: number, width: number) {
+    const segments: Array<{ text: string; isReview: boolean }> = [];
+    const regex = new RegExp(REVIEW_RE.source, "g");
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({ text: text.slice(lastIndex, match.index), isReview: false });
+      }
+      segments.push({ text: `REVIEW: ${match[1]}`, isReview: true });
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      segments.push({ text: text.slice(lastIndex), isReview: false });
+    }
+
+    // Calculate height for page-break check
+    doc.font(FONT_REG).fontSize(FONT_SIZE);
+    const fullText = segments.map(s => s.text).join("");
+    const th = doc.heightOfString(fullText, { width, lineGap: LINE_GAP });
+    ensureSpace(th);
+    doc.font(FONT_REG).fontSize(FONT_SIZE);
+
+    // Render segments inline with PDFKit's "continued" option
+    for (let si = 0; si < segments.length; si++) {
+      const seg = segments[si];
+      const isLast = si === segments.length - 1;
+      doc.fillColor(seg.isReview ? "#CC0000" : "#000000");
+      if (si === 0) {
+        doc.text(seg.text, x, y, { width, lineGap: LINE_GAP, continued: !isLast });
+      } else {
+        doc.text(seg.text, { continued: !isLast });
+      }
+    }
+    y = doc.y;
+    doc.fillColor("#000000");
+  }
+
   const lines = minutes.replace(/\t/g, "    ").split("\n");
 
   // Find title block (everything before the first paragraph starting with "A Worksession" or "A Regular" or "A Combined")
@@ -201,6 +265,13 @@ export function generateMinutesPDF(options: MinutesPDFOptions): PDFKit.PDFDocume
 
     if (trimmed === "") {
       blankLine();
+      continue;
+    }
+
+    // Lines with [REVIEW: ...] markers — render inline with only the review part in red
+    if (hasReviewMarker(trimmed)) {
+      const indent = insideSection && !isFullWidthLine(trimmed) ? SECTION_INDENT : 0;
+      writeReviewLine(trimmed, PAGE.marginLeft + indent, PAGE.contentWidth - indent);
       continue;
     }
 

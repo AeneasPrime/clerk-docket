@@ -22,11 +22,13 @@ export async function GET(
       );
     }
 
-    // Generate PDF
+    // Generate PDF — mark as DRAFT if any [REVIEW:] markers remain
+    const hasReviewMarkers = /\[REVIEW:[^\]]*\]/.test(meeting.minutes);
     const doc = generateMinutesPDF({
       meetingDate: meeting.meeting_date,
       meetingType: meeting.meeting_type as "work_session" | "regular",
       minutes: meeting.minutes,
+      isDraft: hasReviewMarkers,
     });
 
     // Collect PDF into buffer

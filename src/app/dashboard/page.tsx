@@ -594,14 +594,18 @@ function CommandCenter({
 
 // --- Sidebar ---
 
-function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
+function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter, ordStageFilter, onOrdStageFilter, ordStageCounts }: {
   view: string;
   onViewChange: (v: string) => void;
   stats: DocketStats | null;
   deptFilter: string | null;
   onDeptFilter: (dept: string | null) => void;
+  ordStageFilter: OrdStageFilter;
+  onOrdStageFilter: (f: OrdStageFilter) => void;
+  ordStageCounts: Record<string, number>;
 }) {
   const [deptsOpen, setDeptsOpen] = useState(true);
+  const [stagesOpen, setStagesOpen] = useState(true);
   const navItems = [
     { id: "command", label: "Command Center", count: 0 },
     { id: "items", label: "Agenda Tracker", count: stats?.total ?? 0 },
@@ -644,6 +648,35 @@ function Sidebar({ view, onViewChange, stats, deptFilter, onDeptFilter }: {
         )}
 
         <a href="/meetings" className="sb-nav">Meeting Packets</a>
+
+        {view === "ordinances" && (
+          <>
+            <button
+              onClick={() => setStagesOpen((v) => !v)}
+              className="sb-section-toggle mt-5 mb-1"
+            >
+              Stage
+              <svg
+                width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                className={`transition-transform duration-150 ${stagesOpen ? "" : "-rotate-90"}`}
+              >
+                <path d="M3 4.5L6 7.5L9 4.5" />
+              </svg>
+            </button>
+            {stagesOpen && ORD_STAGE_FILTERS.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => onOrdStageFilter(f.key)}
+                className={`sb-nav ${ordStageFilter === f.key ? "active" : ""}`}
+              >
+                {f.label}
+                {(ordStageCounts[f.key] ?? 0) > 0 && (
+                  <span className="sb-count">{ordStageCounts[f.key]}</span>
+                )}
+              </button>
+            ))}
+          </>
+        )}
 
         {view !== "command" && view !== "ordinances" && (
           <>
@@ -1499,7 +1532,39 @@ function fmtDate(d: string | null): string {
   } catch { return d; }
 }
 
-function OrdinancesView({ onSelect }: { onSelect: (id: number) => void }) {
+const ORD_STAGE_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "draft", label: "Draft" },
+  { key: "introduced", label: "Introduced" },
+  { key: "published", label: "Published" },
+  { key: "posted", label: "Posted" },
+  { key: "hearing", label: "Public Hearing" },
+  { key: "adopted", label: "Adopted" },
+  { key: "effective", label: "In Effect" },
+  { key: "failed", label: "Failed" },
+] as const;
+
+type OrdStageFilter = typeof ORD_STAGE_FILTERS[number]["key"];
+
+function ordMatchesStageFilter(t: OrdinanceTracking | null, filter: OrdStageFilter): boolean {
+  if (filter === "all") return true;
+  const stage = getOrdStage(t);
+  const map: Record<string, OrdStageFilter[]> = {
+    "Draft": ["draft"],
+    "Introduced": ["introduced"],
+    "Published": ["published"],
+    "Posted": ["posted"],
+    "Public Hearing": ["hearing"],
+    "Amended — Reset": ["hearing"],
+    "Adopted": ["adopted"],
+    "Awaiting Effective": ["adopted"],
+    "In Effect": ["effective"],
+    "Failed": ["failed"],
+  };
+  return (map[stage.label] ?? []).includes(filter);
+}
+
+function OrdinancesView({ onSelect, stageFilter, onStageCounts }: { onSelect: (id: number) => void; stageFilter: OrdStageFilter; onStageCounts: (counts: Record<string, number>) => void }) {
   const [ordinances, setOrdinances] = useState<OrdinanceWithTracking[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -1523,6 +1588,21 @@ function OrdinancesView({ onSelect }: { onSelect: (id: number) => void }) {
     fetchOrdinances();
   };
 
+  const filtered = ordinances.filter((o) => ordMatchesStageFilter(o.tracking, stageFilter));
+
+  // Report counts to parent for the sidebar
+  useEffect(() => {
+    const counts: Record<string, number> = {};
+    for (const f of ORD_STAGE_FILTERS) counts[f.key] = 0;
+    counts["all"] = ordinances.length;
+    for (const o of ordinances) {
+      for (const f of ORD_STAGE_FILTERS) {
+        if (f.key !== "all" && ordMatchesStageFilter(o.tracking, f.key)) counts[f.key]++;
+      }
+    }
+    onStageCounts(counts);
+  }, [ordinances, onStageCounts]);
+
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -1533,30 +1613,30 @@ function OrdinancesView({ onSelect }: { onSelect: (id: number) => void }) {
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: "#F8F8F9" }}>
-      {/* Header */}
-      <div className="sticky top-0 z-10 border-b bg-white/90 px-6 py-3 backdrop-blur-sm" style={{ borderColor: "#E5E5E8" }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-[14px] font-semibold" style={{ color: "#1D2024" }}>Ordinances</h2>
-            <p className="mt-0.5 text-[11px]" style={{ color: "#9CA0AB" }}>
-              NJ lifecycle tracking — NJSA 40:49-2, 40:69A-181
-            </p>
+        {/* Header */}
+        <div className="sticky top-0 z-10 border-b bg-white/90 px-6 py-3 backdrop-blur-sm" style={{ borderColor: "#E5E5E8" }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-[14px] font-semibold" style={{ color: "#1D2024" }}>Ordinances</h2>
+              <p className="mt-0.5 text-[11px]" style={{ color: "#9CA0AB" }}>
+                NJ lifecycle tracking — NJSA 40:49-2, 40:69A-181
+              </p>
+            </div>
+            <span className="tabular-nums text-[12px]" style={{ color: "#9CA0AB" }}>{filtered.length}{stageFilter !== "all" ? ` of ${ordinances.length}` : ""} total</span>
           </div>
-          <span className="tabular-nums text-[12px]" style={{ color: "#9CA0AB" }}>{ordinances.length} total</span>
         </div>
-      </div>
 
-      {ordinances.length === 0 ? (
+        {filtered.length === 0 ? (
         <div className="flex flex-col items-center py-20">
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "#F0F0F2" }}>
             <span className="text-[14px]" style={{ color: "#9CA0AB" }}>§</span>
           </div>
-          <p className="text-[13px] font-medium" style={{ color: "#6B6F76" }}>No ordinances yet</p>
-          <p className="mt-1 text-[11px]" style={{ color: "#9CA0AB" }}>Ordinances will appear here when classified from inbox</p>
+          <p className="text-[13px] font-medium" style={{ color: "#6B6F76" }}>{stageFilter !== "all" ? "No ordinances at this stage" : "No ordinances yet"}</p>
+          <p className="mt-1 text-[11px]" style={{ color: "#9CA0AB" }}>{stageFilter !== "all" ? "Try a different filter" : "Ordinances will appear here when classified from inbox"}</p>
         </div>
       ) : (
         <div className="mx-auto max-w-[900px] space-y-3 px-6 py-5">
-          {ordinances.map((ord) => {
+          {filtered.map((ord) => {
             const stage = getOrdStage(ord.tracking);
             const meta = ord.item_type ? TYPE_META[ord.item_type] : null;
             const isOpen = expandedId === ord.id;
@@ -2687,6 +2767,9 @@ export default function DashboardPage() {
   const [view, setView] = useState("command");
   const [itemsFilter, setItemsFilter] = useState<"all" | "review" | "accepted" | "needs_info">("all");
   const [deptFilter, setDeptFilter] = useState<string | null>(null);
+  const [ordStageFilter, setOrdStageFilter] = useState<OrdStageFilter>("all");
+  const [ordStageCounts, setOrdStageCounts] = useState<Record<string, number>>({});
+  const stableSetOrdStageCounts = useCallback((c: Record<string, number>) => setOrdStageCounts(c), []);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Handle view changes — map old view names to items + filter
@@ -2799,7 +2882,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#F8F8F9" }}>
-      <Sidebar view={view} onViewChange={handleViewChange} stats={liveStats} deptFilter={deptFilter} onDeptFilter={setDeptFilter} />
+      <Sidebar view={view} onViewChange={handleViewChange} stats={liveStats} deptFilter={deptFilter} onDeptFilter={setDeptFilter} ordStageFilter={ordStageFilter} onOrdStageFilter={setOrdStageFilter} ordStageCounts={ordStageCounts} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         {view !== "command" && <TopBar stats={liveStats} scanning={scanning} scanMessage={scanMsg} onScan={doScan} />}
@@ -2829,7 +2912,7 @@ export default function DashboardPage() {
         ) : view === "live_agenda" ? (
           <LiveAgenda entries={entries} onAction={doAction} onRefresh={fetch_} />
         ) : view === "ordinances" ? (
-          <OrdinancesView onSelect={(id) => setSelectedId(id)} />
+          <OrdinancesView onSelect={(id) => setSelectedId(id)} stageFilter={ordStageFilter} onStageCounts={stableSetOrdStageCounts} />
         ) : (
           <div className="flex min-h-0 flex-1">
             <div className="min-w-0 flex-1 overflow-y-auto">

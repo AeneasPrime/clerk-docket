@@ -79,6 +79,15 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_meetings_type_date ON meetings(meeting_type, meeting_date);
   CREATE INDEX IF NOT EXISTS idx_meetings_cycle ON meetings(cycle_date);
 
+  CREATE TABLE IF NOT EXISTS minutes_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    meeting_id INTEGER NOT NULL REFERENCES meetings(id),
+    old_value TEXT NOT NULL,
+    new_value TEXT NOT NULL,
+    changed_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_minutes_history_meeting ON minutes_history(meeting_id);
+
   CREATE TABLE IF NOT EXISTS ordinance_tracking (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     docket_id INTEGER NOT NULL UNIQUE REFERENCES docket(id) ON DELETE CASCADE,
@@ -548,6 +557,34 @@ export function updateMeeting(
   sets.push("updated_at = datetime('now')");
 
   db.prepare(`UPDATE meetings SET ${sets.join(", ")} WHERE id = ?`).run(...values, id);
+}
+
+export function insertMinutesHistory(
+  meetingId: number,
+  oldValue: string,
+  newValue: string
+): void {
+  db.prepare(
+    "INSERT INTO minutes_history (meeting_id, old_value, new_value) VALUES (?, ?, ?)"
+  ).run(meetingId, oldValue, newValue);
+}
+
+export function getMinutesHistory(meetingId: number): {
+  id: number;
+  meeting_id: number;
+  old_value: string;
+  new_value: string;
+  changed_at: string;
+}[] {
+  return db
+    .prepare("SELECT * FROM minutes_history WHERE meeting_id = ? ORDER BY changed_at DESC")
+    .all(meetingId) as {
+    id: number;
+    meeting_id: number;
+    old_value: string;
+    new_value: string;
+    changed_at: string;
+  }[];
 }
 
 export function getAgendaItemsForMeeting(meetingDate: string): DocketEntry[] {

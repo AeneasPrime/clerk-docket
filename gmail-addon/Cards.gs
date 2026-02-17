@@ -3,45 +3,13 @@
  */
 
 /**
- * Main card shown when viewing an email.
+ * Main card — just a single button.
  */
-function buildMainCard(messageId, from, subject, date, attachments) {
+function buildMainCard(messageId) {
   var card = CardService.newCardBuilder();
-  card.setHeader(
-    CardService.newCardHeader()
-      .setTitle("Send to Docket")
-      .setSubtitle("Edison Township Clerk")
-  );
 
   var section = CardService.newCardSection();
 
-  section.addWidget(
-    CardService.newDecoratedText()
-      .setTopLabel("From")
-      .setText(from || "(unknown)")
-  );
-
-  section.addWidget(
-    CardService.newDecoratedText()
-      .setTopLabel("Subject")
-      .setText(subject || "(no subject)")
-      .setWrapText(true)
-  );
-
-  if (attachments && attachments.length > 0) {
-    var names = [];
-    for (var i = 0; i < attachments.length; i++) {
-      names.push(attachments[i].getName());
-    }
-    section.addWidget(
-      CardService.newDecoratedText()
-        .setTopLabel("Attachments (" + attachments.length + ")")
-        .setText(names.join(", "))
-        .setWrapText(true)
-    );
-  }
-
-  // "Add to Docket" button
   var action = CardService.newAction()
     .setFunctionName("onSendToDocket")
     .setParameters({ messageId: messageId });
@@ -60,7 +28,7 @@ function buildMainCard(messageId, from, subject, date, attachments) {
 /**
  * Success card shown after adding to docket.
  */
-function buildSuccessCard(result, skippedAttachments) {
+function buildSuccessCard(result) {
   var card = CardService.newCardBuilder();
   card.setHeader(
     CardService.newCardHeader()
@@ -81,28 +49,6 @@ function buildSuccessCard(result, skippedAttachments) {
       CardService.newDecoratedText()
         .setTopLabel("Department")
         .setText(result.classification.department || "Unknown")
-    );
-
-    section.addWidget(
-      CardService.newDecoratedText()
-        .setTopLabel("Summary")
-        .setText(result.classification.summary || "")
-        .setWrapText(true)
-    );
-
-    section.addWidget(
-      CardService.newDecoratedText()
-        .setTopLabel("Confidence")
-        .setText(result.classification.confidence || "")
-    );
-  }
-
-  if (skippedAttachments && skippedAttachments.length > 0) {
-    section.addWidget(
-      CardService.newDecoratedText()
-        .setTopLabel("Skipped (too large)")
-        .setText(skippedAttachments.join(", "))
-        .setWrapText(true)
     );
   }
 

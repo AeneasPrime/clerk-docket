@@ -1,24 +1,11 @@
 /**
  * Send to Docket — Google Workspace Add-on for Gmail
  *
- * Adds a sidebar card to Gmail that lets the clerk send individual
- * emails to the clerk-docket app for AI classification and docketing.
- *
- * Setup:
- * 1. Create a new Apps Script project at https://script.google.com
- * 2. Copy Code.gs and Cards.gs into the project
- * 3. Replace appsscript.json (View > Show manifest file) with the provided one
- * 4. Set script properties (File > Project properties > Script properties):
- *    - INGEST_API_KEY: the same key configured in the clerk-docket app
- *    - API_URL: the ingest endpoint URL (e.g. https://clerk-docket.onrender.com/api/ingest)
- * 5. Deploy > Test deployments > Gmail Add-on > Install
+ * Click the add-on icon on any email to instantly send it to the docket.
  */
 
 var MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB per attachment
 
-/**
- * Get configuration from script properties.
- */
 function getConfig() {
   var props = PropertiesService.getScriptProperties();
   return {
@@ -28,32 +15,11 @@ function getConfig() {
 }
 
 /**
- * Contextual trigger: fires when user opens an email in Gmail.
+ * Contextual trigger: fires when user opens an email.
+ * Auto-sends the email to the docket immediately.
  */
 function onGmailMessageOpen(e) {
   var messageId = e.gmail.messageId;
-  var accessToken = e.gmail.accessToken;
-
-  GmailApp.setCurrentMessageAccessToken(accessToken);
-  var message = GmailApp.getMessageById(messageId);
-
-  if (!message) {
-    return buildErrorCard("Could not read this email.");
-  }
-
-  var from = message.getFrom();
-  var subject = message.getSubject();
-  var date = message.getDate().toISOString();
-  var attachments = message.getAttachments();
-
-  return buildMainCard(messageId, from, subject, date, attachments);
-}
-
-/**
- * Action handler: user clicked "Add to Docket".
- */
-function onSendToDocket(e) {
-  var messageId = e.parameters.messageId;
   var accessToken = e.gmail.accessToken;
   var config = getConfig();
 
@@ -68,7 +34,6 @@ function onSendToDocket(e) {
     return buildErrorCard("Could not read this email.");
   }
 
-  // Build the payload
   var payload = {
     emailId: messageId,
     from: message.getFrom(),
@@ -79,18 +44,11 @@ function onSendToDocket(e) {
     attachments: []
   };
 
-  // Extract attachments (skip oversized ones)
   var attachments = message.getAttachments();
-  var skippedAttachments = [];
-
   for (var i = 0; i < attachments.length; i++) {
     var att = attachments[i];
     var bytes = att.getBytes();
-
-    if (bytes.length > MAX_ATTACHMENT_BYTES) {
-      skippedAttachments.push(att.getName() + " (" + Math.round(bytes.length / 1024 / 1024) + " MB)");
-      continue;
-    }
+    if (bytes.length > MAX_ATTACHMENT_BYTES) continue;
 
     payload.attachments.push({
       filename: att.getName(),
@@ -99,7 +57,6 @@ function onSendToDocket(e) {
     });
   }
 
-  // POST to the ingest API
   try {
     var response = UrlFetchApp.fetch(config.apiUrl, {
       method: "post",
@@ -115,7 +72,7 @@ function onSendToDocket(e) {
     var body = JSON.parse(response.getContentText());
 
     if (code === 200 && body.success) {
-      return buildSuccessCard(body, skippedAttachments);
+      return buildSuccessCard(body);
     } else if (code === 409) {
       return buildAlreadyProcessedCard(body);
     } else {
