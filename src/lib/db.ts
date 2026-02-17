@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 import type { ClassificationResult, DocketEntry, DocketStatus, Meeting, MeetingCycle, MeetingStatus, OrdinanceTracking } from "@/types";
-import { SEED_MINUTES } from "./seed-minutes";
+import { SEED_MINUTES, SEED_ORDINANCE_TRACKING } from "./seed-minutes";
 
 const dbPath = process.env.DATABASE_PATH || "./data/docket.db";
 const dbDir = path.dirname(dbPath);
@@ -997,6 +997,38 @@ function seedDemoData() {
     console.log(`[seed] Seeded ${SEED_MINUTES.length} meetings with minutes`);
   } catch (e) {
     console.warn("[seed] Could not load seed-minutes:", e);
+  }
+
+  // Seed ordinance tracking data
+  try {
+    const ordUpsert = db.prepare(`
+      INSERT INTO ordinance_tracking (docket_id, ordinance_number, introduction_date, hearing_date, hearing_amended, hearing_notes, adoption_date, adoption_vote, adoption_failed, clerk_notes)
+      SELECT d.id, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      FROM docket d WHERE d.email_id = ?
+      ON CONFLICT(docket_id) DO UPDATE SET
+        ordinance_number = excluded.ordinance_number,
+        introduction_date = excluded.introduction_date,
+        hearing_date = excluded.hearing_date,
+        hearing_amended = excluded.hearing_amended,
+        hearing_notes = excluded.hearing_notes,
+        adoption_date = excluded.adoption_date,
+        adoption_vote = excluded.adoption_vote,
+        adoption_failed = excluded.adoption_failed,
+        clerk_notes = excluded.clerk_notes
+    `);
+    const seedOrdinances = db.transaction(() => {
+      for (const o of SEED_ORDINANCE_TRACKING) {
+        ordUpsert.run(
+          o.ordinance_number, o.introduction_date, o.hearing_date,
+          o.hearing_amended, o.hearing_notes, o.adoption_date,
+          o.adoption_vote, o.adoption_failed, o.clerk_notes, o.email_id
+        );
+      }
+    });
+    seedOrdinances();
+    console.log(`[seed] Seeded ${SEED_ORDINANCE_TRACKING.length} ordinance tracking records`);
+  } catch (e) {
+    console.warn("[seed] Could not seed ordinance tracking:", e);
   }
 
   db.prepare("INSERT INTO config (key, value) VALUES ('seed_v1', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();

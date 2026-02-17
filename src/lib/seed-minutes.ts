@@ -1,5 +1,92 @@
-// Auto-exported seed minutes data
-export const SEED_MINUTES: { meeting_date: string; meeting_type: string; video_url: string; minutes: string }[] = 
+// Auto-exported seed data for meetings and ordinance tracking
+
+export const SEED_ORDINANCE_TRACKING: {
+  email_id: string;
+  ordinance_number: string | null;
+  introduction_date: string | null;
+  hearing_date: string | null;
+  hearing_amended: number;
+  hearing_notes: string;
+  adoption_date: string | null;
+  adoption_vote: string | null;
+  adoption_failed: number;
+  clerk_notes: string;
+}[] = [
+  {
+    email_id: "seed-2026-01-29-ordinance-amending-chapter-23---adopt-an",
+    ordinance_number: "O.2271-2026",
+    introduction_date: "2026-02-11",
+    hearing_date: null,
+    hearing_amended: 0,
+    hearing_notes: "",
+    adoption_date: null,
+    adoption_vote: null,
+    adoption_failed: 0,
+    clerk_notes: "Tabled on 2026-02-11: Ordinance 2273-2026 (Chapter 4 Personnel Policy Section 4-13 Military Leave) was tabled, then reintroduced as new ordinance same number. Introduction passed 6-1 (Rusher nay), set for public hearing February 25th"
+  },
+  {
+    email_id: "seed-2026-01-07-ordinance-amending--39-12-15-technical-r",
+    ordinance_number: null,
+    introduction_date: "2026-01-12",
+    hearing_date: "2026-01-28",
+    hearing_amended: 0,
+    hearing_notes: "",
+    adoption_date: null,
+    adoption_vote: null,
+    adoption_failed: 0,
+    clerk_notes: ""
+  },
+  {
+    email_id: "seed-2026-01-07-ordinance-amending-article-v---boards--c",
+    ordinance_number: null,
+    introduction_date: "2026-01-12",
+    hearing_date: "2026-01-28",
+    hearing_amended: 0,
+    hearing_notes: "",
+    adoption_date: null,
+    adoption_vote: null,
+    adoption_failed: 0,
+    clerk_notes: ""
+  },
+  {
+    email_id: "seed-2026-02-05-ordinance-amending-chapter-25-trees---ru",
+    ordinance_number: null,
+    introduction_date: null,
+    hearing_date: null,
+    hearing_amended: 0,
+    hearing_notes: "",
+    adoption_date: null,
+    adoption_vote: null,
+    adoption_failed: 0,
+    clerk_notes: ""
+  },
+  {
+    email_id: "seed-2026-01-28-ordinance---chapter-7-traffic---electric",
+    ordinance_number: "O.2270-2026",
+    introduction_date: "2026-02-11",
+    hearing_date: "2026-02-25",
+    hearing_amended: 0,
+    hearing_notes: "First reading vote: 4-3\nFirst reading vote: 4-3 (Rusher yes, Deema yes, Cantos yes, Patel abstain, Patel yes, Shmuel no, Coyle no)\nFirst reading vote: 4-3 (Rusher yes, Deema yes, Cantos yes, Patel abstaining, Patel yes, Shmuel no, Coyle no)",
+    adoption_date: null,
+    adoption_vote: null,
+    adoption_failed: 0,
+    clerk_notes: ""
+  },
+  {
+    email_id: "seed-2026-02-06-ordinance-to-exceed-municipal-budget-app",
+    ordinance_number: null,
+    introduction_date: null,
+    hearing_date: null,
+    hearing_amended: 0,
+    hearing_notes: "",
+    adoption_date: null,
+    adoption_vote: null,
+    adoption_failed: 0,
+    clerk_notes: ""
+  },
+];
+
+export const SEED_MINUTES: { meeting_date: string; meeting_type: string; video_url: string; minutes: string }[] =
 [
   {
     "meeting_date": "2025-10-20",
